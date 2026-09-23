@@ -62,21 +62,49 @@
 
   <footer>
     <strong>Anything red?</strong> Paste this page's failures to your AI along with
-    the file you changed, and ask it to fix the calculation without changing the
-    official numbers in <code>data/ott_2025.js</code>.
+    index.html, and ask it to fix the calculation without changing the
+    official chart numbers in its <code>ott-data</code> section.
   </footer>
 </div>
 
-<!-- Load the real app files, exactly as index.html does. -->
-<script src="../data/ott_2025.js"></script>
-<script src="../js/ott.js"></script>
+<!-- Load the chart data and maths straight out of index.html, so these checks
+     always test exactly what the live app runs. -->
+<script>
+function loadFromApp(then) {
+  if (location.protocol === 'file:') {
+    var b = document.getElementById('banner');
+    b.className = 'fail';
+    b.textContent = 'Open this page from your live site (https://…/tests/test.html), ' +
+                    'not by double-clicking it — browsers block reading index.html off the disk.';
+    return;
+  }
+  fetch('../index.html', { cache: 'no-store' })
+    .then(function (r) { return r.text(); })
+    .then(function (html) {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      ['ott-data', 'ott-engine'].forEach(function (id) {
+        var src = doc.getElementById(id);
+        if (!src) throw new Error('index.html has no <script id="' + id + '">');
+        var s = document.createElement('script');
+        s.textContent = src.textContent;
+        document.head.appendChild(s);
+      });
+      then();
+    })
+    .catch(function (err) {
+      var b = document.getElementById('banner');
+      b.className = 'fail';
+      b.textContent = '✕ Could not load the app from index.html: ' + err.message;
+    });
+}
+</script>
 
 <script>
 /* ---------------------------------------------------------------------------
    A tiny test harness. Deliberately hand-rolled so this project has zero
    dependencies and nothing to install.
    --------------------------------------------------------------------------- */
-(function () {
+loadFromApp(function () {
   'use strict';
 
   var checks = [];
@@ -248,9 +276,6 @@
   /* ============= 8. The two copies of the data agree (http only) ========= */
 
   if (location.protocol === 'file:') {
-    skip('The .json and .js copies of the chart match',
-         'Skipped: browsers block file reading when opened straight off the disk. ' +
-         'This check runs once the project is served over http — see HOSTING.md.');
     finish();
   } else {
     fetch('../data/ott_2025.json')
@@ -265,7 +290,7 @@
           });
           assert(bad.length === 0,
             'these OTT values differ between the two files: ' + bad.slice(0, 8).join(', '));
-          return 'all ' + jk.length + ' rows identical in data/ott_2025.json and data/ott_2025.js';
+          return 'all ' + jk.length + ' rows identical in data/ott_2025.json and index.html';
         });
         finish();
       })
@@ -315,7 +340,7 @@
                            (skipped ? '  ·  ' + skipped + ' skipped' : '');
     }
   }
-})();
+});
 </script>
 </body>
 </html>

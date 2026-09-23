@@ -7,6 +7,12 @@
    file listed in FILES below. After that the app opens instantly and works in a
    pumpkin patch with no bars of reception.
 
+   SINGLE-FILE LAYOUT: styles, data and code all live inside index.html now,
+   so replacing index.html is enough for an update. Because the fetch handler
+   below is network-first, phones pick up a new index.html on their next
+   online visit without a version bump. Only touch this file if a file is
+   added to or removed from FILES.
+
    >>> THE ONE THING TO REMEMBER <<<
 
    If you add, rename or delete a file in this project, you must:
@@ -20,16 +26,12 @@
    ============================================================================= */
 
 /* CHANGE THIS every time you change any file in the app. */
-const CACHE_NAME = 'pumpkin-ott-v1';
+const CACHE_NAME = 'pumpkin-ott-v3';
 
 /* Every file the app needs in order to work offline. */
 const FILES = [
   './',
   './index.html',
-  './css/styles.css',
-  './js/ott.js',
-  './js/app.js',
-  './data/ott_2025.js',
   './manifest.webmanifest',
   './icons/logo.svg',
   './icons/icon-192.png',

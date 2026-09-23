@@ -5,6 +5,13 @@
   This is the app's only screen. If you are an AI editing this project, read
   AI-BRIEFING.md first - it explains the whole project and the house rules.
 
+  SINGLE-FILE LAYOUT (changed Sept 2026): the styles, chart data, maths and
+  screen code now live INSIDE this file, in <style id>, <script id="ott-data">,
+  <script id="ott-engine"> and <script id="ott-app">. The old css/, js/ and
+  data/ott_2025.js files are no longer loaded by the app - edit here, not there.
+  Updates are made by replacing this one file. tests/test.html reads the maths
+  and data straight out of this file, so keep those script ids unchanged.
+
   Structure of this file, top to bottom:
     <head>   settings, theme colour, PWA hookup
     header   logo + app name
@@ -31,7 +38,337 @@
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
   <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css">
+  <style>
+/* =============================================================================
+   styles.css — all the app's colours, spacing and layout
+   =============================================================================
+
+   The look, from Cole's brief: black background, orange accents, white text.
+
+   Everything is driven by the variables in :root below. To restyle the whole
+   app, change those - you should not need to hunt through the rest of the file.
+
+   Two things here exist for real-world reasons, so please keep them:
+     - Touch targets are at least 52px tall. This app gets used outdoors, on a
+       phone, by someone kneeling in a pumpkin patch.
+     - env(safe-area-inset-*) padding keeps content clear of the iPhone notch
+       and home bar once the app is installed to the home screen.
+   ============================================================================= */
+
+:root {
+  /* Brand */
+  --black:        #0a0a0a;
+  --panel:        #151515;
+  --panel-edge:   #262626;
+  --orange:       #f79646;
+  --orange-dim:   #d2762a;
+  --white:        #f6f4f1;
+  --grey:         #9a9490;
+  --red:          #ff6b5a;
+
+  /* Spacing scale */
+  --gap:          16px;
+  --radius:       14px;
+
+  /* A stack that looks right on every phone without downloading a font,
+     so the app stays instant and fully offline. */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font);
+  /* Stops iOS Safari inflating text in landscape */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  /* Faint warmth from the top so a pure-black screen doesn't feel dead */
+  background-image: radial-gradient(120% 60% at 50% 0%, #1c1409 0%, var(--black) 60%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding:
+    calc(var(--gap) + env(safe-area-inset-top))
+    calc(var(--gap) + env(safe-area-inset-right))
+    calc(var(--gap) + env(safe-area-inset-bottom))
+    calc(var(--gap) + env(safe-area-inset-left));
+}
+
+/* ------------------------------- Header ---------------------------------- */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.logo {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--orange);
+}
+
+/* ------------------------ Measurement inputs ------------------------------ */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  padding: 4px var(--gap);
+}
+
+.field {
+  padding: var(--gap) 0;
+  border-bottom: 1px solid var(--panel-edge);
+}
+.field:last-child { border-bottom: 0; }
+
+.field label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.hint {
+  margin: 3px 0 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--grey);
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--black);
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  padding: 0 12px;
+  transition: border-color 0.15s ease;
+}
+
+/* Highlight the field being typed into */
+.input-wrap:focus-within {
+  border-color: var(--orange);
+}
+
+.input-wrap input {
+  flex: 1;
+  min-width: 0;
+  height: 54px;                /* deliberately large - see note at top */
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--white);
+  font-family: var(--font);
+  font-size: 1.5rem;
+  font-weight: 700;
+  /* Digits all the same width, so numbers don't jitter while typing */
+  font-variant-numeric: tabular-nums;
+}
+
+.input-wrap input::placeholder { color: #4a4643; }
+
+/* Hide the tiny up/down spinner arrows - useless on a phone, and they
+   shrink the tappable area of the field. */
+.input-wrap input::-webkit-outer-spin-button,
+.input-wrap input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input-wrap input[type=number] { -moz-appearance: textfield; }
+
+.unit {
+  padding-left: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+/* --------------------------- Running OTT total ---------------------------- */
+
+.ott-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 18px;
+  margin-top: 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.ott-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.ott-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+}
+
+.ott-unit {
+  margin-left: 5px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+/* ------------------------------- Result ----------------------------------- */
+
+.result {
+  margin-top: 14px;
+  padding: 26px 18px 22px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--orange-dim);
+  border-radius: var(--radius);
+}
+
+.result-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--orange);
+}
+
+.result-weight {
+  margin: 8px 0 0;
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+}
+
+.result-unit {
+  margin-left: 8px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+.result-kg {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--grey);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-message {
+  margin: 14px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--grey);
+}
+
+/* Applied by app.js when the numbers are outside the published chart */
+.result.is-warning { border-color: var(--orange); }
+.result.is-warning .result-message { color: var(--orange); }
+
+/* Applied by app.js when the input can't be used at all */
+.result.is-error { border-color: var(--red); }
+.result.is-error .result-message { color: var(--red); }
+
+/* --------------------------------- Clear ---------------------------------- */
+
+.clear {
+  display: block;
+  width: 100%;
+  height: 54px;
+  margin-top: 14px;
+  background: transparent;
+  color: var(--white);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  /* Stops the grey flash on tap on iOS */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clear:active {
+  background: var(--panel);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* --------------------------------- Footer --------------------------------- */
+
+.footer {
+  margin: 26px 4px 8px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+
+.footer p { margin: 0 0 8px; }
+.footer strong { color: var(--white); }
+
+.footer .source { font-size: 0.72rem; color: #6e6864; }
+.footer a { color: var(--orange-dim); }
+
+/* ------------------------------ Accessibility ----------------------------- */
+
+/* Visible keyboard focus ring for anyone tabbing through the app */
+:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+/* Respect a phone set to "reduce motion" */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Slightly smaller headline weight on very narrow phones */
+@media (max-width: 340px) {
+  .result-weight { font-size: 3.2rem; }
+  .title { font-size: 1.2rem; }
+}
+
+</style>
 </head>
 
 <body>
@@ -128,8 +465,461 @@
     2. the engine       (defines window.OTT)
     3. the screen code  (uses both)
 -->
-<script src="data/ott_2025.js"></script>
-<script src="js/ott.js"></script>
-<script src="js/app.js"></script>
+<script id="ott-data">
+/* =============================================================================
+   ott_2025.js - the official 2025 GPC OTT chart, as loadable data
+   =============================================================================
+
+   300 rows, OTT 160" to 539", transcribed from:
+     https://gpc1.org/wp-content/uploads/2025/05/2025-GPC-AG-OTT-Chart.pdf
+
+   WHY THIS IS A .js FILE AND NOT JUST THE .json:
+   A browser opening index.html straight off the hard drive (file://) is not
+   allowed to fetch() a .json file - it fails with a CORS error. Loading data
+   through a <script> tag works everywhere, including by double-clicking
+   index.html. data/ott_2025.json holds the identical numbers and is the copy
+   to reuse when porting to a phone app.
+
+   IF YOU EDIT ONE, EDIT BOTH. tests/test.html checks that they match
+   whenever the project is being served over http.
+
+   The app does not actually need this table to calculate - js/ott.js uses the
+   official formula, which handles decimals. This table is the proof the
+   formula is right, and is here for a future 'browse the chart' screen.
+   ============================================================================= */
+
+window.OTT_TABLE_2025 = {
+  name: '2025 GPC OTT Chart for Atlantic Giant Pumpkins',
+  year: 2025,
+  sourceUrl: 'https://gpc1.org/wp-content/uploads/2025/05/2025-GPC-AG-OTT-Chart.pdf',
+  units: { ott: 'inches', weight: 'pounds' },
+  rowCount: 300,
+
+  // OTT inches : estimated pounds
+  table: {
+    160: 98, 165: 107, 170: 117, 175: 127, 180: 138, 185: 149,
+    190: 162, 195: 174, 200: 188, 202: 194, 204: 199, 206: 205,
+    208: 211, 210: 217, 212: 224, 214: 230, 216: 236, 218: 243,
+    220: 250, 222: 257, 224: 264, 226: 271, 228: 278, 230: 285,
+    232: 293, 234: 300, 236: 308, 238: 316, 240: 324, 242: 332,
+    244: 341, 246: 349, 248: 358, 250: 367, 252: 376, 254: 385,
+    256: 394, 258: 403, 260: 413, 262: 422, 264: 432, 266: 442,
+    268: 452, 270: 462, 272: 473, 274: 483, 276: 494, 278: 505,
+    280: 516, 282: 527, 284: 538, 286: 550, 288: 561, 290: 573,
+    292: 585, 294: 597, 296: 609, 297: 615, 298: 621, 299: 628,
+    300: 634, 301: 640, 302: 647, 303: 653, 304: 659, 305: 666,
+    306: 672, 307: 679, 308: 686, 309: 692, 310: 699, 311: 706,
+    312: 712, 313: 719, 314: 726, 315: 733, 316: 740, 317: 747,
+    318: 753, 319: 761, 320: 768, 321: 775, 322: 782, 323: 789,
+    324: 796, 325: 803, 326: 811, 327: 818, 328: 825, 329: 833,
+    330: 840, 331: 848, 332: 855, 333: 863, 334: 870, 335: 878,
+    336: 885, 337: 893, 338: 901, 339: 909, 340: 916, 341: 924,
+    342: 932, 343: 940, 344: 948, 345: 956, 346: 964, 347: 972,
+    348: 980, 349: 988, 350: 996, 351: 1005, 352: 1013, 353: 1021,
+    354: 1029, 355: 1038, 356: 1046, 357: 1054, 358: 1063, 359: 1071,
+    360: 1080, 361: 1088, 362: 1097, 363: 1106, 364: 1114, 365: 1123,
+    366: 1132, 367: 1140, 368: 1149, 369: 1158, 370: 1167, 371: 1176,
+    372: 1185, 373: 1194, 374: 1203, 375: 1212, 376: 1221, 377: 1230,
+    378: 1239, 379: 1248, 380: 1257, 381: 1267, 382: 1276, 383: 1285,
+    384: 1295, 385: 1304, 386: 1313, 387: 1323, 388: 1332, 389: 1342,
+    390: 1351, 391: 1361, 392: 1370, 393: 1380, 394: 1390, 395: 1399,
+    396: 1409, 397: 1419, 398: 1428, 399: 1438, 400: 1448, 401: 1458,
+    402: 1468, 403: 1478, 404: 1488, 405: 1498, 406: 1508, 407: 1518,
+    408: 1528, 409: 1538, 410: 1548, 411: 1558, 412: 1568, 413: 1578,
+    414: 1589, 415: 1599, 416: 1609, 417: 1620, 418: 1630, 419: 1640,
+    420: 1651, 421: 1661, 422: 1672, 423: 1682, 424: 1693, 425: 1703,
+    426: 1714, 427: 1724, 428: 1735, 429: 1746, 430: 1756, 431: 1767,
+    432: 1778, 433: 1789, 434: 1799, 435: 1810, 436: 1821, 437: 1832,
+    438: 1843, 439: 1854, 440: 1865, 441: 1876, 442: 1887, 443: 1898,
+    444: 1909, 445: 1920, 446: 1931, 447: 1942, 448: 1953, 449: 1964,
+    450: 1975, 451: 1987, 452: 1998, 453: 2009, 454: 2020, 455: 2032,
+    456: 2043, 457: 2055, 458: 2066, 459: 2077, 460: 2089, 461: 2100,
+    462: 2112, 463: 2123, 464: 2135, 465: 2146, 466: 2158, 467: 2169,
+    468: 2181, 469: 2193, 470: 2204, 471: 2216, 472: 2228, 473: 2240,
+    474: 2251, 475: 2263, 476: 2275, 477: 2287, 478: 2299, 479: 2310,
+    480: 2322, 481: 2334, 482: 2346, 483: 2358, 484: 2370, 485: 2382,
+    486: 2394, 487: 2406, 488: 2418, 489: 2430, 490: 2443, 491: 2455,
+    492: 2467, 493: 2479, 494: 2491, 495: 2504, 496: 2516, 497: 2528,
+    498: 2540, 499: 2553, 500: 2565, 501: 2577, 502: 2590, 503: 2602,
+    504: 2615, 505: 2627, 506: 2639, 507: 2652, 508: 2664, 509: 2677,
+    510: 2690, 511: 2702, 512: 2715, 513: 2727, 514: 2740, 515: 2753,
+    516: 2765, 517: 2778, 518: 2791, 519: 2804, 520: 2816, 521: 2829,
+    522: 2842, 523: 2855, 524: 2868, 525: 2880, 526: 2893, 527: 2906,
+    528: 2919, 529: 2932, 530: 2945, 531: 2958, 532: 2971, 533: 2984,
+    534: 2997, 535: 3010, 536: 3023, 537: 3037, 538: 3050, 539: 3063
+  }
+};
+
+</script>
+<script id="ott-engine">
+/* =============================================================================
+   ott.js — the OTT calculation engine
+   =============================================================================
+
+   THIS IS THE MOST IMPORTANT FILE IN THE PROJECT.
+
+   It contains the official 2025 GPC (Great Pumpkin Commonwealth) math that turns
+   three tape measurements into an estimated pumpkin weight. It deliberately
+   contains NO screen code, NO buttons, NO colours — only maths. That is what
+   makes it safe to test, and easy to reuse later in a phone app.
+
+   RULES FOR ANY AI EDITING THIS PROJECT:
+     1. Do not change the numbers in FORMULA unless the grower supplies a newer
+        official GPC chart. They are not arbitrary - they are published values.
+     2. After ANY change to this file, open tests/test.html in a browser and
+        confirm every check still passes. It verifies this code against all 300
+        rows of the official published chart.
+     3. Do not add DOM / document / window UI code to this file. Put that in
+        app.js instead.
+
+   Source of the formula and table:
+     2025 GPC OTT Chart for Atlantic Giant Pumpkins
+     https://gpc1.org/wp-content/uploads/2025/05/2025-GPC-AG-OTT-Chart.pdf
+   ============================================================================= */
+
+(function (global) {
+  'use strict';
+
+  /* ---------------------------------------------------------------------------
+     The official 2025 GPC formula, printed on the chart PDF itself:
+
+       lbs = ((12.81 / (1 + 6.87 * 2^(-OTT/97)))^3 + (OTT/45.9)^3.014) - 10
+
+     Verified: this reproduces all 300 rows of the published chart exactly when
+     rounded to the nearest pound.
+     --------------------------------------------------------------------------- */
+  var FORMULA = {
+    a: 12.81,
+    b: 6.87,
+    c: 97,
+    d: 45.9,
+    e: 3.014,
+    offset: 10
+  };
+
+  /* The inclusive OTT range (inches) actually covered by the published chart.
+     Outside this range the formula still produces a number, but it is
+     unverified extrapolation - the app says so rather than hiding it. */
+  var CHART = {
+    name: '2025 GPC OTT Chart for Atlantic Giant Pumpkins',
+    year: 2025,
+    sourceUrl: 'https://gpc1.org/wp-content/uploads/2025/05/2025-GPC-AG-OTT-Chart.pdf',
+    minOtt: 160,
+    maxOtt: 539,
+    units: { ott: 'inches', weight: 'pounds' }
+  };
+
+  var LB_PER_KG = 2.2046226218;
+
+  /* ---------------------------------------------------------------------------
+     ottTotal(circumference, sideToSide, endToEnd)
+
+     OTT ("Over The Top") is simply the three tape measurements added together.
+       - circumference: around the middle of the pumpkin
+       - sideToSide:    ground to ground across the pumpkin, over the top
+       - endToEnd:      ground to ground stem-to-blossom, over the top
+     All in inches. Returns inches.
+     --------------------------------------------------------------------------- */
+  function ottTotal(circumference, sideToSide, endToEnd) {
+    return num(circumference) + num(sideToSide) + num(endToEnd);
+  }
+
+  /* ---------------------------------------------------------------------------
+     weightFromOtt(ott) -> pounds (unrounded)
+
+     The raw official calculation. Accepts decimals (e.g. 384.5).
+     --------------------------------------------------------------------------- */
+  function weightFromOtt(ott) {
+    var o = num(ott);
+    var f = FORMULA;
+    var term1 = Math.pow(f.a / (1 + f.b * Math.pow(2, -o / f.c)), 3);
+    var term2 = Math.pow(o / f.d, f.e);
+    return term1 + term2 - f.offset;
+  }
+
+  /* ---------------------------------------------------------------------------
+     estimate(circumference, sideToSide, endToEnd) -> result object
+
+     This is the function the app screen calls. It returns everything the UI
+     needs to know, including WHY a result might not be usable, so that app.js
+     never has to make judgement calls about the maths.
+
+     Returns:
+       {
+         ok:            true if a weight could be calculated
+         reason:        when ok is false, a plain-English explanation
+         ott:           the summed OTT in inches
+         lbs:           estimated weight in pounds (rounded, for display)
+         lbsExact:      unrounded pounds, if you need precision
+         kg:            estimated weight in kilograms (rounded)
+         inChartRange:  true if OTT falls inside the published 160-539 inch chart
+         rangeNote:     explanation when inChartRange is false
+         measurements:  the three cleaned input numbers
+       }
+     --------------------------------------------------------------------------- */
+  function estimate(circumference, sideToSide, endToEnd) {
+    var m = [circumference, sideToSide, endToEnd].map(clean);
+
+    if (m.some(function (v) { return v === null; })) {
+      return fail('Enter all three measurements.', m);
+    }
+    if (m.some(function (v) { return v <= 0; })) {
+      return fail('Measurements must be greater than zero.', m);
+    }
+    // A tape measure that reads 5000 inches means a typo, not a world record.
+    if (m.some(function (v) { return v > 1000; })) {
+      return fail('That measurement looks too large - please check it.', m);
+    }
+
+    var ott = m[0] + m[1] + m[2];
+    var exact = weightFromOtt(ott);
+
+    if (!isFinite(exact) || exact <= 0) {
+      return fail('That OTT is too small to estimate a weight from.', m, ott);
+    }
+
+    var inRange = ott >= CHART.minOtt && ott <= CHART.maxOtt;
+
+    return {
+      ok: true,
+      reason: null,
+      /* 3 decimal places, not 2: growers read tape measures in eighths of an
+         inch, and an eighth is .125 / .375 / .625 / .875. Rounding to 2 would
+         show a genuine 153.875" measurement as 153.88". The weight above is
+         calculated from the unrounded sum either way. */
+      ott: round(ott, 3),
+      lbs: Math.round(exact),
+      lbsExact: exact,
+      kg: Math.round(exact / LB_PER_KG),
+      inChartRange: inRange,
+      rangeNote: inRange ? null : (
+        ott < CHART.minOtt
+          ? 'OTT is below the published chart (' + CHART.minOtt + '"). Small-fruit estimates are less reliable.'
+          : 'OTT is above the published chart (' + CHART.maxOtt + '"). This is beyond the charted range.'
+      ),
+      measurements: { circumference: m[0], sideToSide: m[1], endToEnd: m[2] }
+    };
+  }
+
+  /* ---------------------------------------------------------------------------
+     tableLookup(ott, table) -> pounds, straight from the published chart
+
+     The app uses the formula (above) because it handles decimals exactly. This
+     function exists so tests/test.html can prove the formula agrees with the
+     published chart, and so a future "show me the chart" screen has something
+     to read from. `table` is an object like { "160": 98, "165": 107, ... }.
+     Returns null if that OTT is not a row in the chart.
+     --------------------------------------------------------------------------- */
+  function tableLookup(ott, table) {
+    if (!table) return null;
+    var key = String(Math.round(num(ott)));
+    return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : null;
+  }
+
+  /* ---------------------------- small helpers ------------------------------- */
+
+  // Accepts "384", "384.5", " 384.5 " and commas typed as decimal separators.
+  function clean(v) {
+    if (v === null || v === undefined) return null;
+    var s = String(v).trim().replace(',', '.');
+    if (s === '') return null;
+    var n = Number(s);
+    return isFinite(n) ? n : null;
+  }
+
+  function num(v) {
+    var n = clean(v);
+    return n === null ? NaN : n;
+  }
+
+  function round(n, places) {
+    var f = Math.pow(10, places);
+    return Math.round(n * f) / f;
+  }
+
+  function fail(reason, m, ott) {
+    return {
+      ok: false,
+      reason: reason,
+      ott: ott === undefined ? null : round(ott, 3),
+      lbs: null,
+      lbsExact: null,
+      kg: null,
+      inChartRange: false,
+      rangeNote: null,
+      measurements: { circumference: m[0], sideToSide: m[1], endToEnd: m[2] }
+    };
+  }
+
+  /* ------------------------------- exports ---------------------------------- */
+  global.OTT = {
+    CHART: CHART,
+    FORMULA: FORMULA,
+    ottTotal: ottTotal,
+    weightFromOtt: weightFromOtt,
+    estimate: estimate,
+    tableLookup: tableLookup,
+    clean: clean
+  };
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script id="ott-app">
+/* =============================================================================
+   app.js — connects the screen to the calculation engine
+   =============================================================================
+
+   This file does exactly three things:
+     1. reads the three input boxes
+     2. asks js/ott.js for an estimate
+     3. writes the answer onto the screen
+
+   All of the actual maths lives in js/ott.js. Please keep it that way - it is
+   what lets tests/test.html prove the numbers are right without needing a
+   browser window, and what makes a future phone app easy to build.
+
+   RULE FOR ANY AI EDITING THIS FILE: no formulas here. If you catch yourself
+   typing a multiplication involving 12.81, 6.87, 97 or 45.9, you are in the
+   wrong file.
+   ============================================================================= */
+
+(function () {
+  'use strict';
+
+  /* Grab the bits of the page we need, once, up front. */
+  var el = {
+    form:        document.getElementById('measure-form'),
+    circ:        document.getElementById('circumference'),
+    side:        document.getElementById('side-to-side'),
+    end:         document.getElementById('end-to-end'),
+    ottTotal:    document.getElementById('ott-total'),
+    result:      document.getElementById('result'),
+    weightLbs:   document.getElementById('weight-lbs'),
+    weightKg:    document.getElementById('weight-kg'),
+    message:     document.getElementById('result-message'),
+    clear:       document.getElementById('clear')
+  };
+
+  var EMPTY = '—'; // an em dash, shown when there is nothing to show yet
+
+  /* ---------------------------------------------------------------------------
+     update() - runs on every keystroke
+     --------------------------------------------------------------------------- */
+  function update() {
+    var result = window.OTT.estimate(el.circ.value, el.side.value, el.end.value);
+
+    /* The OTT total is useful even before all three boxes are filled, so show
+       the sum of whatever has been typed so far. */
+    showRunningOtt();
+
+    if (!result.ok) {
+      // Nothing typed yet is a normal starting state, not an error to shout about.
+      var nothingTyped = !el.circ.value && !el.side.value && !el.end.value;
+      render({
+        lbs: EMPTY,
+        kg: '',
+        message: nothingTyped ? 'Enter your three measurements.' : result.reason,
+        state: nothingTyped ? '' : 'is-error'
+      });
+      return;
+    }
+
+    render({
+      lbs: formatNumber(result.lbs),
+      kg: formatNumber(result.kg) + ' kg',
+      message: result.inChartRange
+        ? 'Based on the official 2025 GPC chart.'
+        : result.rangeNote,
+      state: result.inChartRange ? '' : 'is-warning'
+    });
+  }
+
+  /* Sum whatever numbers are currently in the boxes, ignoring empty ones. */
+  function showRunningOtt() {
+    var values = [el.circ.value, el.side.value, el.end.value]
+      .map(window.OTT.clean)
+      .filter(function (v) { return v !== null && v > 0; });
+
+    if (!values.length) {
+      el.ottTotal.textContent = EMPTY;
+      return;
+    }
+
+    var sum = values.reduce(function (a, b) { return a + b; }, 0);
+    el.ottTotal.textContent = formatNumber(round3(sum));
+  }
+
+  /* ---------------------------------------------------------------------------
+     render() - the only function that touches the result panel
+     --------------------------------------------------------------------------- */
+  function render(view) {
+    el.weightLbs.textContent = view.lbs;
+    el.weightKg.textContent = view.kg;
+    el.message.textContent = view.message;
+    el.result.className = 'result' + (view.state ? ' ' + view.state : '');
+  }
+
+  /* "2,650" reads faster than "2650" at a glance in a field.
+     maximumFractionDigits keeps eighth-inch measurements intact (153.875)
+     while not padding whole numbers with pointless zeros (385 not 385.000). */
+  function formatNumber(n) {
+    try {
+      return n.toLocaleString('en-US', { maximumFractionDigits: 3 });
+    } catch (e) {
+      return String(n);
+    }
+  }
+
+  /* Three decimals, because a tape measure reads in eighths of an inch. */
+  function round3(n) {
+    return Math.round(n * 1000) / 1000;
+  }
+
+  /* ---------------------------------------------------------------------------
+     Wiring
+     --------------------------------------------------------------------------- */
+
+  // 'input' fires on every keystroke, paste and spinner click - unlike 'change',
+  // which only fires when the box loses focus. That's what makes it feel instant.
+  [el.circ, el.side, el.end].forEach(function (input) {
+    input.addEventListener('input', update);
+  });
+
+  // The inputs sit in a <form> for good keyboard behaviour, but there is nothing
+  // to submit - pressing Enter should just close the phone keyboard.
+  el.form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    document.activeElement && document.activeElement.blur();
+  });
+
+  el.clear.addEventListener('click', function () {
+    el.circ.value = '';
+    el.side.value = '';
+    el.end.value = '';
+    update();
+    el.circ.focus();
+  });
+
+  // Draw the starting state.
+  update();
+
+  /* ---------------------------------------------------------------------------
+     Offline support
+
+     Registering the service worker is what lets the app open with no signal.
+     It is wrapped in a check because file:// (double-clicking index.html) does
+     not allow service workers - the app still works, it just isn't installable
+     until it's served over http. See HOSTING.md.
+     --------------------------------------------------------------------------- */
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('Offline support unavailable:', err);
+      });
+    });
+  }
+})();
+
+</script>
 </body>
 </html>
