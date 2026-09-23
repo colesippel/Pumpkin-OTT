@@ -1,0 +1,328 @@
+/* =============================================================================
+   styles.css — all the app's colours, spacing and layout
+   =============================================================================
+
+   The look, from Cole's brief: black background, orange accents, white text.
+
+   Everything is driven by the variables in :root below. To restyle the whole
+   app, change those - you should not need to hunt through the rest of the file.
+
+   Two things here exist for real-world reasons, so please keep them:
+     - Touch targets are at least 52px tall. This app gets used outdoors, on a
+       phone, by someone kneeling in a pumpkin patch.
+     - env(safe-area-inset-*) padding keeps content clear of the iPhone notch
+       and home bar once the app is installed to the home screen.
+   ============================================================================= */
+
+:root {
+  /* Brand */
+  --black:        #0a0a0a;
+  --panel:        #151515;
+  --panel-edge:   #262626;
+  --orange:       #f79646;
+  --orange-dim:   #d2762a;
+  --white:        #f6f4f1;
+  --grey:         #9a9490;
+  --red:          #ff6b5a;
+
+  /* Spacing scale */
+  --gap:          16px;
+  --radius:       14px;
+
+  /* A stack that looks right on every phone without downloading a font,
+     so the app stays instant and fully offline. */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font);
+  /* Stops iOS Safari inflating text in landscape */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  /* Faint warmth from the top so a pure-black screen doesn't feel dead */
+  background-image: radial-gradient(120% 60% at 50% 0%, #1c1409 0%, var(--black) 60%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding:
+    calc(var(--gap) + env(safe-area-inset-top))
+    calc(var(--gap) + env(safe-area-inset-right))
+    calc(var(--gap) + env(safe-area-inset-bottom))
+    calc(var(--gap) + env(safe-area-inset-left));
+}
+
+/* ------------------------------- Header ---------------------------------- */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.logo {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--orange);
+}
+
+/* ------------------------ Measurement inputs ------------------------------ */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  padding: 4px var(--gap);
+}
+
+.field {
+  padding: var(--gap) 0;
+  border-bottom: 1px solid var(--panel-edge);
+}
+.field:last-child { border-bottom: 0; }
+
+.field label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.hint {
+  margin: 3px 0 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--grey);
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--black);
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  padding: 0 12px;
+  transition: border-color 0.15s ease;
+}
+
+/* Highlight the field being typed into */
+.input-wrap:focus-within {
+  border-color: var(--orange);
+}
+
+.input-wrap input {
+  flex: 1;
+  min-width: 0;
+  height: 54px;                /* deliberately large - see note at top */
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--white);
+  font-family: var(--font);
+  font-size: 1.5rem;
+  font-weight: 700;
+  /* Digits all the same width, so numbers don't jitter while typing */
+  font-variant-numeric: tabular-nums;
+}
+
+.input-wrap input::placeholder { color: #4a4643; }
+
+/* Hide the tiny up/down spinner arrows - useless on a phone, and they
+   shrink the tappable area of the field. */
+.input-wrap input::-webkit-outer-spin-button,
+.input-wrap input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input-wrap input[type=number] { -moz-appearance: textfield; }
+
+.unit {
+  padding-left: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+/* --------------------------- Running OTT total ---------------------------- */
+
+.ott-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 18px;
+  margin-top: 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.ott-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.ott-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+}
+
+.ott-unit {
+  margin-left: 5px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+/* ------------------------------- Result ----------------------------------- */
+
+.result {
+  margin-top: 14px;
+  padding: 26px 18px 22px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--orange-dim);
+  border-radius: var(--radius);
+}
+
+.result-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--orange);
+}
+
+.result-weight {
+  margin: 8px 0 0;
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+}
+
+.result-unit {
+  margin-left: 8px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--grey);
+}
+
+.result-kg {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--grey);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-message {
+  margin: 14px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--grey);
+}
+
+/* Applied by app.js when the numbers are outside the published chart */
+.result.is-warning { border-color: var(--orange); }
+.result.is-warning .result-message { color: var(--orange); }
+
+/* Applied by app.js when the input can't be used at all */
+.result.is-error { border-color: var(--red); }
+.result.is-error .result-message { color: var(--red); }
+
+/* --------------------------------- Clear ---------------------------------- */
+
+.clear {
+  display: block;
+  width: 100%;
+  height: 54px;
+  margin-top: 14px;
+  background: transparent;
+  color: var(--white);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  /* Stops the grey flash on tap on iOS */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clear:active {
+  background: var(--panel);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* --------------------------------- Footer --------------------------------- */
+
+.footer {
+  margin: 26px 4px 8px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+
+.footer p { margin: 0 0 8px; }
+.footer strong { color: var(--white); }
+
+.footer .source { font-size: 0.72rem; color: #6e6864; }
+.footer a { color: var(--orange-dim); }
+
+/* ------------------------------ Accessibility ----------------------------- */
+
+/* Visible keyboard focus ring for anyone tabbing through the app */
+:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+/* Respect a phone set to "reduce motion" */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Slightly smaller headline weight on very narrow phones */
+@media (max-width: 340px) {
+  .result-weight { font-size: 3.2rem; }
+  .title { font-size: 1.2rem; }
+}

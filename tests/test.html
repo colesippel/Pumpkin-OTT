@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<!--
+  tests/test.html — proof that the maths is right
+  ===============================================
+
+  HOW TO USE THIS: double-click this file. That's it.
+
+  A green banner means the calculator agrees with all 300 rows of the official
+  published GPC chart and handles bad input sensibly. A red banner means
+  something is broken - it will tell you exactly which check failed.
+
+  >>> IF YOU ARE AN AI EDITING THIS PROJECT <<<
+  After you change ANY file, tell the person to open this page and confirm it is
+  still green. Never report a change as finished without that. If you cannot
+  open a browser yourself, say so plainly and ask them to check.
+
+  No installation, no npm, no build step. It runs in the browser.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tests · Giant Pumpkin OTT Calculator</title>
+  <style>
+    :root { --black:#0a0a0a; --panel:#151515; --edge:#262626;
+            --green:#4ade80; --red:#ff6b5a; --orange:#f79646; --grey:#9a9490; }
+    body { margin:0; padding:24px 16px; background:var(--black); color:#f6f4f1;
+           font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width:760px; margin:0 auto; }
+    h1 { font-size:1.2rem; margin:0 0 4px; }
+    .sub { color:var(--grey); margin:0 0 20px; font-size:0.85rem; }
+    #banner { padding:18px; border-radius:12px; font-size:1.15rem; font-weight:800;
+              text-align:center; margin-bottom:18px; border:1px solid; }
+    .pass { background:#0d2417; border-color:var(--green); color:var(--green); }
+    .fail { background:#2a1210; border-color:var(--red);   color:var(--red); }
+    .skip { background:#241d0d; border-color:var(--orange); color:var(--orange); }
+    table { width:100%; border-collapse:collapse; background:var(--panel);
+            border:1px solid var(--edge); border-radius:12px; overflow:hidden; }
+    td { padding:10px 12px; border-bottom:1px solid var(--edge); vertical-align:top; }
+    tr:last-child td { border-bottom:0; }
+    .mark { width:1%; white-space:nowrap; font-weight:800; }
+    .ok   { color:var(--green); }
+    .no   { color:var(--red); }
+    .sk   { color:var(--orange); }
+    .detail { color:var(--grey); font-size:0.82rem; margin-top:3px;
+              font-variant-numeric:tabular-nums; }
+    a { color:var(--orange); }
+    footer { margin-top:20px; color:var(--grey); font-size:0.8rem; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Giant Pumpkin OTT Calculator &mdash; tests</h1>
+  <p class="sub">
+    Checks the calculator against the official
+    <a href="https://gpc1.org/wp-content/uploads/2025/05/2025-GPC-AG-OTT-Chart.pdf"
+       target="_blank" rel="noopener">2025 GPC OTT chart</a>.
+  </p>
+
+  <div id="banner">Running&hellip;</div>
+  <table id="results"></table>
+
+  <footer>
+    <strong>Anything red?</strong> Paste this page's failures to your AI along with
+    the file you changed, and ask it to fix the calculation without changing the
+    official numbers in <code>data/ott_2025.js</code>.
+  </footer>
+</div>
+
+<!-- Load the real app files, exactly as index.html does. -->
+<script src="../data/ott_2025.js"></script>
+<script src="../js/ott.js"></script>
+
+<script>
+/* ---------------------------------------------------------------------------
+   A tiny test harness. Deliberately hand-rolled so this project has zero
+   dependencies and nothing to install.
+   --------------------------------------------------------------------------- */
+(function () {
+  'use strict';
+
+  var checks = [];
+  function test(name, fn) {
+    try {
+      var detail = fn();
+      checks.push({ name: name, pass: true, detail: detail || '' });
+    } catch (err) {
+      checks.push({ name: name, pass: false, detail: err.message });
+    }
+  }
+  function skip(name, why) {
+    checks.push({ name: name, skipped: true, detail: why });
+  }
+  function assert(cond, message) {
+    if (!cond) throw new Error(message);
+  }
+  function eq(actual, expected, label) {
+    assert(actual === expected,
+      (label || '') + ' expected ' + expected + ', got ' + actual);
+  }
+
+  var DATA  = window.OTT_TABLE_2025;
+  var TABLE = DATA.table;
+  var keys  = Object.keys(TABLE).map(Number).sort(function (a, b) { return a - b; });
+
+  /* ======================= 1. The official chart ========================= */
+
+  test('Every published chart row matches the formula', function () {
+    var bad = [];
+    keys.forEach(function (ott) {
+      var got = Math.round(window.OTT.weightFromOtt(ott));
+      if (got !== TABLE[ott]) bad.push(ott + '": chart ' + TABLE[ott] + ' vs code ' + got);
+    });
+    assert(bad.length === 0,
+      bad.length + ' of ' + keys.length + ' rows disagree — ' + bad.slice(0, 5).join('; '));
+    return keys.length + ' rows checked, OTT ' + keys[0] + '"–' + keys[keys.length - 1] + '", all exact';
+  });
+
+  test('Chart data is the expected size and range', function () {
+    eq(keys.length, 300, 'row count:');
+    eq(keys[0], window.OTT.CHART.minOtt, 'lowest OTT:');
+    eq(keys[keys.length - 1], window.OTT.CHART.maxOtt, 'highest OTT:');
+    eq(DATA.rowCount, keys.length, 'declared rowCount:');
+    return '300 rows, 160"–539", matches CHART metadata in ott.js';
+  });
+
+  test('Weight always increases as the pumpkin gets bigger', function () {
+    for (var i = 1; i < keys.length; i++) {
+      var lo = window.OTT.weightFromOtt(keys[i - 1]);
+      var hi = window.OTT.weightFromOtt(keys[i]);
+      assert(hi > lo, 'weight fell between ' + keys[i - 1] + '" and ' + keys[i] + '"');
+    }
+    return 'monotonic across the whole chart';
+  });
+
+  /* ==================== 2. Adding up the measurements ==================== */
+
+  test('OTT is the three measurements added together', function () {
+    eq(window.OTT.ottTotal(100, 120, 130), 350, 'whole numbers:');
+    eq(Math.round(window.OTT.ottTotal(63.25, 45, 45.625) * 1000) / 1000, 153.875,
+       'decimals:');
+    return '350 and 153.875 both correct';
+  });
+
+  test('Decimals are accepted, including a comma decimal separator', function () {
+    var dot   = window.OTT.estimate('128.5', '128.5', '128.5');
+    var comma = window.OTT.estimate('128,5', '128,5', '128,5');
+    assert(dot.ok, 'dot decimals were rejected');
+    assert(comma.ok, 'comma decimals were rejected');
+    eq(comma.lbs, dot.lbs, 'comma vs dot result:');
+    eq(dot.ott, 385.5, 'summed OTT:');
+    return 'OTT 385.5" → ' + dot.lbs + ' lbs either way';
+  });
+
+  /* ========================= 3. A worked example ========================= */
+
+  test('Matches a real worked example from the growing community', function () {
+    // Bart Toftness's published example: 63.25" + 45" + 45.625" = 153.875" OTT,
+    // a pumpkin that actually weighed 82 lbs.
+    var r = window.OTT.estimate(63.25, 45, 45.625);
+    assert(r.ok, 'estimate failed');
+    eq(r.ott, 153.875, 'OTT:');
+    assert(r.lbs > 70 && r.lbs < 100, 'estimate ' + r.lbs + ' lbs is not near the 82 lb actual');
+    return 'OTT 153.875" → ' + r.lbs + ' lbs (pumpkin actually weighed 82 lbs)';
+  });
+
+  /* ===================== 4. Pounds and kilograms ========================= */
+
+  test('Kilograms are converted correctly', function () {
+    var r = window.OTT.estimate(140, 140, 140);
+    assert(r.ok, 'estimate failed');
+    var expected = Math.round(r.lbsExact / 2.2046226218);
+    eq(r.kg, expected, 'kg:');
+    return r.lbs + ' lbs = ' + r.kg + ' kg';
+  });
+
+  /* ======================= 5. Sensible about range ======================= */
+
+  test('OTT below 160" is marked as outside the chart', function () {
+    var r = window.OTT.estimate(50, 50, 50);          // OTT 150"
+    assert(r.ok, 'should still calculate');
+    eq(r.inChartRange, false, 'inChartRange:');
+    assert(r.rangeNote && r.rangeNote.indexOf('below') !== -1,
+      'expected a "below the chart" note, got: ' + r.rangeNote);
+    return 'OTT 150" → ' + r.lbs + ' lbs, correctly flagged';
+  });
+
+  test('OTT above 539" is marked as outside the chart', function () {
+    var r = window.OTT.estimate(200, 200, 200);       // OTT 600"
+    assert(r.ok, 'should still calculate');
+    eq(r.inChartRange, false, 'inChartRange:');
+    assert(r.rangeNote && r.rangeNote.indexOf('above') !== -1,
+      'expected an "above the chart" note, got: ' + r.rangeNote);
+    return 'OTT 600" → ' + r.lbs + ' lbs, correctly flagged';
+  });
+
+  test('The chart boundaries themselves count as inside the chart', function () {
+    eq(window.OTT.estimate(60, 50, 50).inChartRange, true, 'OTT 160":');
+    eq(window.OTT.estimate(179, 180, 180).inChartRange, true, 'OTT 539":');
+    return 'both 160" and 539" accepted as in-range';
+  });
+
+  /* ========================= 6. Bad input ================================ */
+
+  test('Empty boxes ask for measurements instead of showing a number', function () {
+    var r = window.OTT.estimate('', '', '');
+    eq(r.ok, false, 'ok:');
+    eq(r.lbs, null, 'lbs:');
+    assert(/all three/i.test(r.reason), 'unhelpful message: ' + r.reason);
+    return '"' + r.reason + '"';
+  });
+
+  test('A partly filled form does not produce a weight', function () {
+    eq(window.OTT.estimate(120, '', '').ok, false, 'one of three filled:');
+    eq(window.OTT.estimate(120, 120, '').ok, false, 'two of three filled:');
+    return 'both correctly refused';
+  });
+
+  test('Zero and negative measurements are rejected', function () {
+    eq(window.OTT.estimate(0, 120, 120).ok, false, 'zero:');
+    eq(window.OTT.estimate(-50, 120, 120).ok, false, 'negative:');
+    return 'both refused rather than returning nonsense';
+  });
+
+  test('Obvious typos are caught', function () {
+    var r = window.OTT.estimate(50000, 120, 120);
+    eq(r.ok, false, 'ok:');
+    assert(/too large/i.test(r.reason), 'unhelpful message: ' + r.reason);
+    return '"' + r.reason + '"';
+  });
+
+  test('Letters and gibberish are rejected', function () {
+    eq(window.OTT.estimate('abc', 120, 120).ok, false, 'letters:');
+    eq(window.OTT.estimate('12in', 120, 120).ok, false, 'number with units:');
+    return 'both refused';
+  });
+
+  /* ====================== 7. Direct chart lookup ========================= */
+
+  test('Looking a value straight up in the chart works', function () {
+    eq(window.OTT.tableLookup(400, TABLE), 1448, 'OTT 400":');
+    eq(window.OTT.tableLookup(160, TABLE), 98, 'OTT 160":');
+    eq(window.OTT.tableLookup(399.6, TABLE), 1448, 'OTT 399.6" (rounds to 400):');
+    eq(window.OTT.tableLookup(9999, TABLE), null, 'OTT not on the chart:');
+    return 'exact rows, rounding, and misses all behave';
+  });
+
+  /* ============= 8. The two copies of the data agree (http only) ========= */
+
+  if (location.protocol === 'file:') {
+    skip('The .json and .js copies of the chart match',
+         'Skipped: browsers block file reading when opened straight off the disk. ' +
+         'This check runs once the project is served over http — see HOSTING.md.');
+    finish();
+  } else {
+    fetch('../data/ott_2025.json')
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        test('The .json and .js copies of the chart match', function () {
+          var jk = Object.keys(json.table);
+          eq(jk.length, keys.length, 'row count:');
+          var bad = [];
+          jk.forEach(function (k) {
+            if (json.table[k] !== TABLE[k]) bad.push(k);
+          });
+          assert(bad.length === 0,
+            'these OTT values differ between the two files: ' + bad.slice(0, 8).join(', '));
+          return 'all ' + jk.length + ' rows identical in data/ott_2025.json and data/ott_2025.js';
+        });
+        finish();
+      })
+      .catch(function (err) {
+        test('The .json and .js copies of the chart match', function () {
+          throw new Error('could not read data/ott_2025.json — ' + err.message);
+        });
+        finish();
+      });
+  }
+
+  /* --------------------------- render results ---------------------------- */
+  function finish() {
+    var table = document.getElementById('results');
+    var failed = 0, skipped = 0;
+
+    checks.forEach(function (c) {
+      var row = table.insertRow();
+      var mark = row.insertCell();
+      mark.className = 'mark ' + (c.skipped ? 'sk' : c.pass ? 'ok' : 'no');
+      mark.textContent = c.skipped ? '–' : c.pass ? '✓' : '✕';
+
+      var cell = row.insertCell();
+      var title = document.createElement('div');
+      title.textContent = c.name;
+      cell.appendChild(title);
+      if (c.detail) {
+        var d = document.createElement('div');
+        d.className = 'detail';
+        d.textContent = c.detail;
+        cell.appendChild(d);
+      }
+
+      if (c.skipped) skipped++;
+      else if (!c.pass) failed++;
+    });
+
+    var passed = checks.length - failed - skipped;
+    var banner = document.getElementById('banner');
+    if (failed) {
+      banner.className = 'fail';
+      banner.textContent = '✕ ' + failed + ' check' + (failed > 1 ? 's' : '') +
+                           ' FAILED  ·  ' + passed + ' passed';
+    } else {
+      banner.className = 'pass';
+      banner.textContent = '✓ ALL ' + passed + ' CHECKS PASSED' +
+                           (skipped ? '  ·  ' + skipped + ' skipped' : '');
+    }
+  }
+})();
+</script>
+</body>
+</html>
