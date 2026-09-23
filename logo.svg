@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pumpkin skull logo">
+  <title>Giant Pumpkin OTT Calculator</title>
+  <!-- Stem -->
+  <path d="M244 96 q6 -34 -14 -52 q34 4 44 30 q14 -20 40 -18 q-18 16 -20 40 z" fill="#4a7a2c"/>
+  <!-- Pumpkin body: centre lobe plus two side lobes -->
+  <g fill="#f79646">
+    <ellipse cx="256" cy="300" rx="200" ry="172"/>
+  </g>
+  <!-- Rib shading -->
+  <g fill="none" stroke="#d2762a" stroke-width="10" stroke-linecap="round" opacity="0.75">
+    <path d="M158 148 q-40 152 0 304"/>
+    <path d="M354 148 q40 152 0 304"/>
+  </g>
+  <!-- Skull features -->
+  <g fill="#0a0a0a">
+    <!-- Eye sockets, angled inward -->
+    <path d="M132 236 q52 -30 100 -6 q-6 74 -52 82 q-46 4 -48 -76 z"/>
+    <path d="M380 236 q-52 -30 -100 -6 q6 74 52 82 q46 4 48 -76 z"/>
+    <!-- Nose -->
+    <path d="M256 316 l-26 46 l52 0 z"/>
+    <!-- Jaw -->
+    <path d="M146 396 q110 42 220 0 q-14 58 -110 58 q-96 0 -110 -58 z"/>
+  </g>
+  <!-- Teeth -->
+  <g stroke="#f79646" stroke-width="13" stroke-linecap="butt">
+    <path d="M196 400 v50"/><path d="M256 408 v48"/><path d="M316 400 v50"/>
+  </g>
+</svg>

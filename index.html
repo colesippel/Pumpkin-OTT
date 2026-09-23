@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!--
+  Giant Pumpkin OTT Calculator
+  ============================
+  This is the app's only screen. If you are an AI editing this project, read
+  AI-BRIEFING.md first - it explains the whole project and the house rules.
+
+  Structure of this file, top to bottom:
+    <head>   settings, theme colour, PWA hookup
+    header   logo + app name
+    inputs   the three tape measurements
+    ott      the running OTT total
+    result   the estimated weight
+    footer   accuracy note + link to the official chart
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Giant Pumpkin OTT Calculator</title>
+  <meta name="description" content="Estimate the weight of a giant pumpkin from three over-the-top tape measurements, using the official 2025 GPC chart.">
+
+  <!-- Makes the phone's status bar match the app instead of flashing white -->
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OTT Calc">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+<div class="app">
+
+  <header class="header">
+    <img class="logo" src="icons/logo.svg" alt="" width="56" height="56">
+    <div>
+      <h1 class="title">Giant Pumpkin</h1>
+      <p class="subtitle">OTT Weight Calculator</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- ---------------- The three measurements ---------------- -->
+    <!--
+      Notes on the input attributes, because they matter more than they look:
+        inputmode="decimal"  gives phones a number pad WITH a decimal point
+        step="any"           allows decimals like 384.5
+        autocomplete="off"   stops the browser suggesting old unrelated numbers
+      Do not change type="number" to type="text" without re-checking the phone
+      keyboard, and do not remove inputmode - a grower in a field with muddy
+      hands should never have to hunt for the decimal key.
+    -->
+    <form class="card" id="measure-form" autocomplete="off" novalidate>
+      <div class="field">
+        <label for="circumference">Circumference</label>
+        <p class="hint">All the way around the middle of the pumpkin</p>
+        <div class="input-wrap">
+          <input id="circumference" name="circumference" type="number"
+                 inputmode="decimal" step="any" min="0" placeholder="0">
+          <span class="unit">in</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="side-to-side">Side to side</label>
+        <p class="hint">Ground to ground across the pumpkin, over the top</p>
+        <div class="input-wrap">
+          <input id="side-to-side" name="sideToSide" type="number"
+                 inputmode="decimal" step="any" min="0" placeholder="0">
+          <span class="unit">in</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="end-to-end">End to end</label>
+        <p class="hint">Ground to ground stem to blossom, over the top</p>
+        <div class="input-wrap">
+          <input id="end-to-end" name="endToEnd" type="number"
+                 inputmode="decimal" step="any" min="0" placeholder="0">
+          <span class="unit">in</span>
+        </div>
+      </div>
+    </form>
+
+    <!-- ---------------- Running OTT total ---------------- -->
+    <div class="ott-row">
+      <span class="ott-label">Total OTT</span>
+      <span class="ott-value"><output id="ott-total" for="circumference side-to-side end-to-end">—</output><span class="ott-unit">in</span></span>
+    </div>
+
+    <!-- ---------------- Result ---------------- -->
+    <!-- aria-live tells a screen reader to announce the new weight as it changes -->
+    <section class="result" id="result" aria-live="polite">
+      <p class="result-label">Estimated weight</p>
+      <p class="result-weight"><output id="weight-lbs">—</output><span class="result-unit">lbs</span></p>
+      <p class="result-kg" id="weight-kg"></p>
+      <p class="result-message" id="result-message">Enter your three measurements.</p>
+    </section>
+
+    <button class="clear" id="clear" type="button">Clear</button>
+  </main>
+
+  <footer class="footer">
+    <p>
+      An <strong>estimate</strong>, not a weigh-off. The over-the-top method
+      typically lands within about 5&ndash;10% of true weight. Only a certified
+      scale settles it.
+    </p>
+    <p class="source">
+      Official 2025 GPC OTT chart for Atlantic Giant pumpkins &middot;
+      <a href="https://gpc1.org/wp-content/uploads/2025/05/2025-GPC-AG-OTT-Chart.pdf"
+         target="_blank" rel="noopener">view the chart</a>
+    </p>
+    <p class="source">Independent. Not affiliated with any club or growing association.</p>
+  </footer>
+
+</div>
+
+<!--
+  Load order matters:
+    1. the chart data   (defines window.OTT_TABLE_2025)
+    2. the engine       (defines window.OTT)
+    3. the screen code  (uses both)
+-->
+<script src="data/ott_2025.js"></script>
+<script src="js/ott.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
