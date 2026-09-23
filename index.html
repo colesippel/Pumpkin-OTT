@@ -7,7 +7,9 @@
 
   SINGLE-FILE LAYOUT (changed Sept 2026): the styles, chart data, maths and
   screen code now live INSIDE this file, in <style id>, <script id="ott-data">,
-  <script id="ott-engine"> and <script id="ott-app">. The old css/, js/ and
+  <script id="ott-engine">, <script id="ott-app"> and <script id="ott-log">
+  (saved pumpkins, growth charts, care log, backup - stored in localStorage
+  under 'ottlog.v1'; see the comment at the top of that script). The old css/, js/ and
   data/ott_2025.js files are no longer loaded by the app - edit here, not there.
   Updates are made by replacing this one file. tests/test.html reads the maths
   and data straight out of this file, so keep those script ids unchanged.
@@ -368,6 +370,201 @@ body {
   .title { font-size: 1.2rem; }
 }
 
+
+/* ============================================================================
+   PUMPKIN LOG - tabs, saved pumpkins, growth charts, care log, backup
+   ============================================================================ */
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 5px;
+  margin: -6px 0 18px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+.tab {
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--grey);
+  font: 700 0.95rem var(--font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab.is-active { background: var(--orange); color: #1a0f05; }
+
+[hidden] { display: none !important; }
+
+/* Generic buttons */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-edge);
+  background: transparent;
+  color: var(--white);
+  font: 700 1rem var(--font);
+  cursor: pointer;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { border-color: var(--orange); color: var(--orange); }
+.btn-primary { background: var(--orange); border-color: var(--orange); color: #1a0f05; }
+.btn-primary:active { background: var(--orange-dim); color: #1a0f05; }
+.btn-danger { color: var(--red); border-color: #4a2320; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.btn-small { min-height: 40px; width: auto; padding: 0 14px; font-size: 0.9rem; }
+.link-btn {
+  background: none; border: 0; padding: 8px 0; color: var(--orange);
+  font: 700 0.95rem var(--font); cursor: pointer;
+}
+
+.section-title {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 26px 2px 10px;
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--grey);
+}
+.muted { color: var(--grey); font-size: 0.85rem; line-height: 1.45; }
+.empty {
+  padding: 22px var(--gap);
+  text-align: center;
+  color: var(--grey);
+  line-height: 1.5;
+}
+
+/* Season chips */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 4px; margin-bottom: 12px; }
+.chip {
+  flex: 0 0 auto; height: 36px; padding: 0 14px; border-radius: 18px;
+  border: 1px solid var(--panel-edge); background: var(--panel); color: var(--grey);
+  font: 700 0.85rem var(--font); cursor: pointer;
+}
+.chip.is-active { border-color: var(--orange); color: var(--orange); }
+
+/* Pumpkin cards in the list */
+.pk-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 10px;
+  padding: 14px var(--gap);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  color: var(--white);
+  font-family: var(--font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pk-card:active { border-color: var(--orange); }
+.pk-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.pk-name { font-size: 1.1rem; font-weight: 800; overflow-wrap: anywhere; }
+.pk-weight { font-size: 1.25rem; font-weight: 800; color: var(--orange); white-space: nowrap; }
+.pk-weight small { font-size: 0.75rem; color: var(--grey); font-weight: 600; }
+.pk-cross { margin-top: 3px; font-size: 0.85rem; color: var(--grey); }
+.pk-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 0.82rem; color: var(--grey); }
+.pk-meta b { color: var(--white); font-weight: 700; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  background: #2a1a0b; color: var(--orange);
+}
+.badge.is-weighed { background: #10261a; color: #6fd39a; }
+.badge.is-retired { background: #222; color: var(--grey); }
+
+/* Detail page */
+.back { margin: -4px 0 6px; }
+.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.detail-name { margin: 0; font-size: 1.5rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.stat {
+  padding: 12px 14px; background: var(--panel); border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+.stat-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grey); }
+.stat-value { margin-top: 4px; font-size: 1.35rem; font-weight: 800; }
+.stat-value small { font-size: 0.75rem; color: var(--grey); font-weight: 600; }
+.stat-value.up { color: #6fd39a; }
+.stat-value.down { color: var(--red); }
+.stat-note { margin-top: 2px; font-size: 0.75rem; color: var(--grey); }
+
+.chart-card { margin-top: 12px; padding: 12px 10px 8px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius); }
+.chart-toggle { display: flex; gap: 6px; margin: 0 4px 8px; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart-legend { display: flex; gap: 14px; margin: 6px 6px 2px; font-size: 0.75rem; color: var(--grey); }
+.chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+/* Rows of history */
+.list { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius); overflow: hidden; }
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
+  width: 100%; padding: 12px var(--gap); text-align: left;
+  background: transparent; border: 0; border-bottom: 1px solid var(--panel-edge);
+  color: var(--white); font-family: var(--font); cursor: pointer;
+}
+.row:last-child { border-bottom: 0; }
+.row:active { background: #1c1c1c; }
+.row-main { font-weight: 700; font-size: 0.95rem; }
+.row-sub { grid-column: 1 / -1; font-size: 0.8rem; color: var(--grey); line-height: 1.4; overflow-wrap: anywhere; }
+.row-right { font-weight: 800; color: var(--orange); white-space: nowrap; text-align: right; }
+.row-right small { display: block; font-size: 0.75rem; font-weight: 600; color: var(--grey); }
+.care-type { color: var(--orange); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+
+.notes-box {
+  padding: 14px var(--gap); background: var(--panel); border: 1px solid var(--panel-edge);
+  border-radius: var(--radius); white-space: pre-wrap; line-height: 1.5; font-size: 0.92rem; overflow-wrap: anywhere;
+}
+
+/* Forms */
+.form-title { margin: 0 0 14px; font-size: 1.35rem; font-weight: 800; }
+.f { padding: 12px 0; border-bottom: 1px solid var(--panel-edge); }
+.f:last-child { border-bottom: 0; }
+.f label { display: block; font-weight: 700; margin-bottom: 8px; }
+.f .hint { margin-top: -4px; }
+.f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.txt, .sel, .area {
+  display: block; width: 100%; min-height: 50px; padding: 12px 14px;
+  background: var(--black); color: var(--white);
+  border: 1px solid var(--panel-edge); border-radius: 10px;
+  font: 600 1rem var(--font);
+  -webkit-appearance: none; appearance: none;
+}
+.txt:focus, .sel:focus, .area:focus { outline: none; border-color: var(--orange); }
+.area { min-height: 96px; resize: vertical; line-height: 1.45; font-weight: 500; }
+.sel { background-image: linear-gradient(45deg, transparent 50%, var(--grey) 50%), linear-gradient(135deg, var(--grey) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
+input[type=date].txt { min-width: 0; }
+.live-est { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: #1a120a; color: var(--grey); font-size: 0.9rem; }
+.live-est b { color: var(--orange); font-size: 1.1rem; }
+.form-error { margin-top: 10px; color: var(--red); font-size: 0.9rem; }
+
+/* Save-from-calculator panel */
+.save-panel { margin-top: 14px; padding: 14px var(--gap); }
+.save-panel .f { border: 0; padding: 6px 0; }
+
+/* Backup box */
+.backup { margin-top: 26px; padding: 14px var(--gap) 16px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius); }
+.backup h3 { margin: 0 0 4px; font-size: 1rem; }
+.backup.is-due { border-color: var(--orange); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%); z-index: 20;
+  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px;
+  background: var(--white); color: #111; font-weight: 700; font-size: 0.92rem;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
 </style>
 </head>
 
@@ -382,7 +579,15 @@ body {
     </div>
   </header>
 
-  <main>
+  <nav class="tabs" aria-label="Sections">
+    <button class="tab is-active" type="button" data-tab="calc">Calculator</button>
+    <button class="tab" type="button" data-tab="log">My Pumpkins</button>
+  </nav>
+
+  <!-- Pumpkin log screens are drawn here by the ott-log script -->
+  <section id="view-log" hidden></section>
+
+  <main id="view-calc">
     <!-- ---------------- The three measurements ---------------- -->
     <!--
       Notes on the input attributes, because they matter more than they look:
@@ -440,8 +645,13 @@ body {
       <p class="result-message" id="result-message">Enter your three measurements.</p>
     </section>
 
+    <button class="btn btn-primary" id="save-to-pumpkin" type="button" hidden style="margin-top:14px">Save to a pumpkin</button>
+    <div class="card save-panel" id="save-panel" hidden></div>
+
     <button class="clear" id="clear" type="button">Clear</button>
   </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
 
   <footer class="footer">
     <p>
@@ -918,6 +1128,772 @@ window.OTT_TABLE_2025 = {
       });
     });
   }
+})();
+
+</script>
+<script id="ott-log">
+/* =============================================================================
+   ott-log - saved pumpkins, growth history, care/nutrient log, charts, backup
+   =============================================================================
+
+   Storage: the browser's localStorage, key 'ottlog.v1', holding
+     { version: 1, pumpkins: [ ...pumpkin ] }
+
+   One pumpkin:
+     {
+       id, name, season (year), seed, pollinator, pollinationDate ('YYYY-MM-DD'),
+       status ('growing' | 'weighed' | 'retired'), finalWeight (lbs, scale),
+       notes, photos: [],
+       measurements: [ { id, date, circumference, sideToSide, endToEnd, ott, lbs, note } ],
+       careLog:      [ { id, date, type, product, amount, note } ],
+       createdAt, updatedAt
+     }
+
+   RULE: weights always come from window.OTT.estimate(). No formulas here.
+   Data lives only on this device - the Backup box exports/imports a file.
+   ============================================================================= */
+
+(function () {
+  'use strict';
+
+  var KEY = 'ottlog.v1';
+  var BACKUP_KEY = 'ottlog.lastBackup';
+  var CARE_TYPES = [
+    'Fertilizer / nutrient', 'Foliar feed', 'Soil amendment', 'Water',
+    'Fungicide / pest', 'Pruning / vine work', 'Weather', 'Other'
+  ];
+
+  /* ------------------------------ storage -------------------------------- */
+
+  var db = load();
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var d = JSON.parse(raw);
+        if (d && Array.isArray(d.pumpkins)) return d;
+      }
+    } catch (e) { console.warn('[log] could not read saved data', e); }
+    return { version: 1, pumpkins: [] };
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(db));
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+      return true;
+    } catch (e) {
+      toast('Could not save - this phone\u2019s storage for the app is full.');
+      return false;
+    }
+  }
+
+  function uid(prefix) {
+    return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function find(id) {
+    for (var i = 0; i < db.pumpkins.length; i++) if (db.pumpkins[i].id === id) return db.pumpkins[i];
+    return null;
+  }
+
+  function touch(p) { p.updatedAt = new Date().toISOString(); }
+
+  /* ------------------------------ dates ---------------------------------- */
+
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function dayNum(s) {            // whole days since 1970, immune to time zones / DST
+    if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    var a = s.split('-');
+    return Math.round(Date.UTC(+a[0], +a[1] - 1, +a[2]) / 86400000);
+  }
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmtDate(s, withYear) {
+    if (!s) return '';
+    var a = s.split('-');
+    return MONTHS[+a[1] - 1] + ' ' + (+a[2]) + (withYear ? ', ' + a[0] : '');
+  }
+
+  /* ------------------------------ maths helpers (no OTT formulas) -------- */
+
+  function sortedMeasurements(p) {
+    return p.measurements.slice().sort(function (a, b) {
+      return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    });
+  }
+  function latest(p) {
+    var m = sortedMeasurements(p);
+    return m.length ? m[m.length - 1] : null;
+  }
+  function dap(p, dateStr) {       // days after pollination
+    var a = dayNum(p.pollinationDate), b = dayNum(dateStr || today());
+    return a === null || b === null ? null : b - a;
+  }
+  function gainSeries(p) {         // lbs/day between consecutive measurements
+    var m = sortedMeasurements(p), out = [];
+    for (var i = 1; i < m.length; i++) {
+      var days = dayNum(m[i].date) - dayNum(m[i - 1].date);
+      if (days > 0) out.push({ date: m[i].date, perDay: (m[i].lbs - m[i - 1].lbs) / days, days: days });
+    }
+    return out;
+  }
+  function lastGain(p) { var g = gainSeries(p); return g.length ? g[g.length - 1] : null; }
+
+  function fmt(n, dp) {
+    if (n === null || n === undefined || isNaN(n)) return '\u2014';
+    return Number(n).toLocaleString('en-US', { maximumFractionDigits: dp === undefined ? 0 : dp });
+  }
+  function signed(n, dp) { return (n > 0 ? '+' : '') + fmt(n, dp); }
+  function cross(p) {
+    if (p.seed && p.pollinator) return p.seed + ' x ' + p.pollinator;
+    if (p.seed) return p.seed + ' x (open / unknown)';
+    if (p.pollinator) return '(unknown) x ' + p.pollinator;
+    return '';
+  }
+
+  /* ------------------------------ helpers -------------------------------- */
+
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  var toastTimer;
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+  function go(hash) { location.hash = hash; }
+
+  /* ------------------------------ routing -------------------------------- */
+
+  var view = {
+    calc: document.getElementById('view-calc'),
+    log: document.getElementById('view-log'),
+    tabs: document.querySelectorAll('.tab')
+  };
+  var seasonFilter = null;   // null = all
+  var chartMode = 'weight';
+  var pending = null;        // measurement carried over from the calculator
+
+  function route() {
+    var h = location.hash.replace(/^#\/?/, '');
+    var parts = h.split('/');
+    var name = parts[0] || 'calc';
+    var id = parts[1];
+    var sub = parts[2];
+
+    if (name !== 'new' && name !== 'measure') pending = null;
+    var isCalc = name === 'calc';
+    view.calc.hidden = !isCalc;
+    view.log.hidden = isCalc;
+    Array.prototype.forEach.call(view.tabs, function (t) {
+      t.classList.toggle('is-active', (t.getAttribute('data-tab') === 'calc') === isCalc);
+    });
+    if (isCalc) { refreshSavePanel(); return; }
+
+    var p = id && id !== 'new' ? find(id) : null;
+    if (name === 'pumpkins') renderList();
+    else if (name === 'new') renderPumpkinForm(null);
+    else if (!p) { go('#pumpkins'); return; }
+    else if (name === 'pumpkin') renderDetail(p);
+    else if (name === 'edit') renderPumpkinForm(p);
+    else if (name === 'measure') renderMeasureForm(p, sub);
+    else if (name === 'care') renderCareForm(p, sub);
+    else renderList();
+    window.scrollTo(0, 0);
+  }
+
+  Array.prototype.forEach.call(view.tabs, function (t) {
+    t.addEventListener('click', function () {
+      go(t.getAttribute('data-tab') === 'calc' ? '#calc' : '#pumpkins');
+    });
+  });
+  window.addEventListener('hashchange', route);
+
+  /* ------------------------------ LIST ----------------------------------- */
+
+  function renderList() {
+    var seasons = [];
+    db.pumpkins.forEach(function (p) { if (seasons.indexOf(p.season) < 0) seasons.push(p.season); });
+    seasons.sort(function (a, b) { return b - a; });
+    if (seasonFilter !== null && seasons.indexOf(seasonFilter) < 0) seasonFilter = null;
+
+    var list = db.pumpkins.filter(function (p) { return seasonFilter === null || p.season === seasonFilter; });
+    var order = { growing: 0, weighed: 1, retired: 2 };
+    list.sort(function (a, b) {
+      if (b.season !== a.season) return b.season - a.season;
+      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+      var la = latest(a), lb = latest(b);
+      return (lb ? lb.lbs : -1) - (la ? la.lbs : -1);
+    });
+
+    var html = '<button class="btn btn-primary" id="add-pumpkin">+ New pumpkin</button>';
+
+    if (seasons.length > 1) {
+      html += '<div class="chips" style="margin-top:14px">' +
+        '<button class="chip' + (seasonFilter === null ? ' is-active' : '') + '" data-season="">All</button>' +
+        seasons.map(function (s) {
+          return '<button class="chip' + (seasonFilter === s ? ' is-active' : '') + '" data-season="' + s + '">' + s + '</button>';
+        }).join('') + '</div>';
+    } else html += '<div style="height:14px"></div>';
+
+    if (!db.pumpkins.length) {
+      html += '<div class="empty">No pumpkins yet.<br>Add one to start logging measurements, growth and care.</div>';
+    }
+
+    var lastSeason = null;
+    list.forEach(function (p) {
+      if (p.season !== lastSeason && seasonFilter === null && seasons.length > 1) {
+        html += '<div class="section-title" style="margin-top:14px">' + p.season + ' season</div>';
+      }
+      lastSeason = p.season;
+      var l = latest(p), g = lastGain(p), d = dap(p, p.status === 'growing' ? today() : (l && l.date));
+      var weight = p.status === 'weighed' && p.finalWeight
+        ? fmt(p.finalWeight) + ' <small>lbs actual</small>'
+        : l ? fmt(l.lbs) + ' <small>lbs est.</small>' : '<small>no measurements</small>';
+      html += '<button class="pk-card" data-id="' + esc(p.id) + '">' +
+        '<div class="pk-top"><span class="pk-name">' + esc(p.name) + '</span><span class="pk-weight">' + weight + '</span></div>' +
+        (cross(p) ? '<div class="pk-cross">' + esc(cross(p)) + '</div>' : '') +
+        '<div class="pk-meta">' +
+          '<span class="badge is-' + p.status + '">' + p.status + '</span>' +
+          (d !== null && d >= 0 ? '<span><b>' + d + '</b> DAP</span>' : '') +
+          (g && p.status === 'growing' ? '<span><b>' + signed(g.perDay, 1) + '</b> lbs/day</span>' : '') +
+          (l ? '<span>Last measured <b>' + fmtDate(l.date) + '</b></span>' : '') +
+        '</div></button>';
+    });
+
+    html += backupBoxHtml();
+    view.log.innerHTML = html;
+
+    view.log.querySelector('#add-pumpkin').onclick = function () { go('#new'); };
+    Array.prototype.forEach.call(view.log.querySelectorAll('.pk-card'), function (b) {
+      b.onclick = function () { go('#pumpkin/' + b.getAttribute('data-id')); };
+    });
+    Array.prototype.forEach.call(view.log.querySelectorAll('.chip'), function (c) {
+      c.onclick = function () {
+        var s = c.getAttribute('data-season');
+        seasonFilter = s === '' ? null : +s;
+        renderList();
+      };
+    });
+    wireBackup();
+  }
+
+  /* ------------------------------ DETAIL --------------------------------- */
+
+  function renderDetail(p) {
+    var m = sortedMeasurements(p);
+    var l = m.length ? m[m.length - 1] : null;
+    var g = lastGain(p);
+    var d = dap(p, p.status === 'growing' ? today() : (l && l.date));
+
+    var html = '<button class="link-btn back" id="back">\u2039 All pumpkins</button>' +
+      '<div class="detail-head"><div>' +
+        '<h2 class="detail-name">' + esc(p.name) + '</h2>' +
+        (cross(p) ? '<div class="pk-cross">' + esc(cross(p)) + '</div>' : '') +
+        '<div class="pk-meta"><span class="badge is-' + p.status + '">' + p.status + '</span><span>' + p.season + ' season</span>' +
+        (p.pollinationDate ? '<span>Pollinated <b>' + fmtDate(p.pollinationDate, true) + '</b></span>' : '') + '</div>' +
+      '</div><button class="btn btn-small" id="edit">Edit</button></div>';
+
+    // Stats
+    html += '<div class="stats">' +
+      stat('Latest estimate', l ? fmt(l.lbs) + ' <small>lbs</small>' : '\u2014', l ? fmtDate(l.date) + ' \u00b7 OTT ' + fmt(l.ott, 3) + '\u2033' : 'No measurements yet') +
+      stat('Last gain', g ? signed(g.perDay, 1) + ' <small>lbs/day</small>' : '\u2014',
+           g ? 'over ' + g.days + ' day' + (g.days > 1 ? 's' : '') : 'Needs 2 measurements', g ? (g.perDay >= 0 ? 'up' : 'down') : '') +
+      stat('Days after pollination', d !== null && d >= 0 ? d : '\u2014', p.pollinationDate ? (p.status === 'growing' ? 'as of today' : 'at last measurement') : 'Add a pollination date') +
+      (p.status === 'weighed' && p.finalWeight
+        ? stat('Scale weight', fmt(p.finalWeight) + ' <small>lbs</small>', l ? heavyLight(p.finalWeight, l.lbs) : '')
+        : stat('Measurements', m.length, p.careLog.length + ' care entr' + (p.careLog.length === 1 ? 'y' : 'ies'))) +
+      '</div>';
+
+    html += '<div class="btn-row"><button class="btn btn-primary" id="add-m">+ Measure</button>' +
+            '<button class="btn" id="add-c">+ Care / nutrient</button></div>';
+
+    // Chart
+    html += '<div class="chart-card"><div class="chart-toggle">' +
+      '<button class="chip' + (chartMode === 'weight' ? ' is-active' : '') + '" data-mode="weight">Weight</button>' +
+      '<button class="chip' + (chartMode === 'gain' ? ' is-active' : '') + '" data-mode="gain">Daily gain</button>' +
+      '</div><div class="chart">' + (chartMode === 'weight' ? weightChart(p) : gainChart(p)) + '</div>' +
+      (p.careLog.length ? '<div class="chart-legend"><span><i style="background:var(--orange)"></i>Estimate</span><span><i style="background:#3fa9b5"></i>Care / nutrient entry</span></div>' : '') +
+      '</div>';
+
+    // Measurements
+    html += '<div class="section-title">Measurements</div>';
+    if (!m.length) html += '<div class="list"><div class="empty">Tap <b>+ Measure</b> to log the first one.</div></div>';
+    else {
+      var gains = gainSeries(p), gainByDate = {};
+      gains.forEach(function (x) { gainByDate[x.date] = x; });
+      html += '<div class="list">' + m.slice().reverse().map(function (x) {
+        var dd = dap(p, x.date), gg = gainByDate[x.date];
+        return '<button class="row" data-m="' + esc(x.id) + '">' +
+          '<span class="row-main">' + fmtDate(x.date, true) + (dd !== null && dd >= 0 ? ' <span class="muted">\u00b7 ' + dd + ' DAP</span>' : '') + '</span>' +
+          '<span class="row-right">' + fmt(x.lbs) + ' lbs' + (gg ? '<small>' + signed(gg.perDay, 1) + '/day</small>' : '') + '</span>' +
+          '<span class="row-sub">' + fmt(x.circumference, 3) + ' \u00b7 ' + fmt(x.sideToSide, 3) + ' \u00b7 ' + fmt(x.endToEnd, 3) +
+            ' = OTT ' + fmt(x.ott, 3) + '\u2033' + (x.note ? ' \u2014 ' + esc(x.note) : '') + '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+    }
+
+    // Care log
+    html += '<div class="section-title">Care &amp; nutrient log</div>';
+    var care = p.careLog.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+    if (!care.length) html += '<div class="list"><div class="empty">Log fertilizer, feeds, sprays, watering and vine work with <b>+ Care / nutrient</b>.</div></div>';
+    else {
+      html += '<div class="list">' + care.map(function (c) {
+        var detail = [c.product, c.amount].filter(Boolean).join(' \u00b7 ');
+        return '<button class="row" data-c="' + esc(c.id) + '">' +
+          '<span class="row-main">' + (detail ? esc(detail) : esc(c.type)) + '</span>' +
+          '<span class="row-right" style="color:var(--grey);font-weight:600">' + fmtDate(c.date) + '</span>' +
+          '<span class="row-sub"><span class="care-type">' + esc(c.type) + '</span>' + (c.note ? ' \u2014 ' + esc(c.note) : '') + '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+    }
+
+    // Notes
+    if (p.notes) html += '<div class="section-title">Notes</div><div class="notes-box">' + esc(p.notes) + '</div>';
+
+    view.log.innerHTML = html;
+    view.log.querySelector('#back').onclick = function () { go('#pumpkins'); };
+    view.log.querySelector('#edit').onclick = function () { go('#edit/' + p.id); };
+    view.log.querySelector('#add-m').onclick = function () { go('#measure/' + p.id); };
+    view.log.querySelector('#add-c').onclick = function () { go('#care/' + p.id); };
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-mode]'), function (b) {
+      b.onclick = function () { chartMode = b.getAttribute('data-mode'); renderDetail(p); };
+    });
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-m]'), function (b) {
+      b.onclick = function () { go('#measure/' + p.id + '/' + b.getAttribute('data-m')); };
+    });
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-c]'), function (b) {
+      b.onclick = function () { go('#care/' + p.id + '/' + b.getAttribute('data-c')); };
+    });
+  }
+
+  function stat(label, value, note, cls) {
+    return '<div class="stat"><div class="stat-label">' + label + '</div>' +
+      '<div class="stat-value' + (cls ? ' ' + cls : '') + '">' + value + '</div>' +
+      (note ? '<div class="stat-note">' + note + '</div>' : '') + '</div>';
+  }
+  function heavyLight(actual, est) {
+    var pct = (actual - est) / est * 100;
+    if (Math.abs(pct) < 0.5) return 'right on the estimate';
+    return 'went ' + (pct > 0 ? 'heavy' : 'light') + ' by ' + fmt(Math.abs(pct), 1) + '%';
+  }
+
+  /* ------------------------------ CHARTS (hand-drawn SVG, works offline) -- */
+
+  var W = 340, H = 200, PL = 46, PR = 12, PT = 12, PB = 28;
+
+  function niceMax(v) {
+    if (v <= 0) return 10;
+    var mag = Math.pow(10, Math.floor(Math.log(v) / Math.LN10));
+    var steps = [1, 2, 2.5, 5, 10];
+    for (var i = 0; i < steps.length; i++) if (steps[i] * mag >= v) return steps[i] * mag;
+    return 10 * mag;
+  }
+
+  /* Round axis steps (500s, 20s, 2.5s...) so the gridline labels read cleanly. */
+  function axis(lo, hi) {
+    var step = niceMax(Math.max(hi - lo, 1e-9) / 5);
+    return { min: Math.floor(lo / step) * step, max: Math.max(Math.ceil(hi / step), 1) * step, step: step };
+  }
+
+  function frame(xs, ax, fmtY, padX) {
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    if (x1 === x0) { x0 -= 3; x1 += 3; }
+    var yMin = ax.min, yMax = ax.max, px = padX || 6;
+    var sx = function (d) { return PL + px + (d - x0) / (x1 - x0) * (W - PL - PR - 2 * px); };
+    var sy = function (v) { return PT + (1 - (v - yMin) / (yMax - yMin)) * (H - PT - PB); };
+    var g = '';
+    for (var v = yMin; v <= yMax + ax.step / 2; v += ax.step) {
+      var y = sy(v);
+      g += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + y + '" y2="' + y + '" stroke="#262626" stroke-width="1"/>' +
+           '<text x="' + (PL - 6) + '" y="' + (y + 3.5) + '" text-anchor="end" font-size="10" fill="#9a9490">' + fmtY(v) + '</text>';
+    }
+    var ticks = [x0, x1]; if (x1 - x0 > 20) ticks.splice(1, 0, Math.round((x0 + x1) / 2));
+    ticks.forEach(function (d, i) {
+      var date = new Date(d * 86400000);
+      var label = MONTHS[date.getUTCMonth()] + ' ' + date.getUTCDate();
+      g += '<text x="' + sx(d) + '" y="' + (H - 8) + '" font-size="10" fill="#9a9490" text-anchor="' +
+           (i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle') + '">' + label + '</text>';
+    });
+    return { sx: sx, sy: sy, grid: g, x0: x0, x1: x1 };
+  }
+
+  function careMarks(p, f) {
+    return p.careLog.map(function (c) {
+      var d = dayNum(c.date);
+      if (d === null || d < f.x0 || d > f.x1) return '';
+      var x = f.sx(d);
+      return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#3fa9b5" stroke-opacity="0.25" stroke-dasharray="2 3"/>' +
+             '<circle cx="' + x + '" cy="' + (H - PB) + '" r="3.5" fill="#3fa9b5"><title>' + esc(fmtDate(c.date) + ' \u2013 ' + (c.product || c.type)) + '</title></circle>';
+    }).join('');
+  }
+
+  function svgWrap(inner) {
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" font-family="-apple-system,Segoe UI,Roboto,sans-serif">' + inner + '</svg>';
+  }
+
+  function weightChart(p) {
+    var m = sortedMeasurements(p);
+    if (!m.length) return '<div class="empty">Your growth chart appears here once you log measurements.</div>';
+    var xs = m.map(function (x) { return dayNum(x.date); });
+    var maxW = Math.max.apply(null, m.map(function (x) { return x.lbs; }));
+    if (p.status === 'weighed' && p.finalWeight) maxW = Math.max(maxW, p.finalWeight);
+    var f = frame(xs, axis(0, maxW), function (v) { return fmt(v); });
+    var pts = m.map(function (x) { return f.sx(dayNum(x.date)).toFixed(1) + ',' + f.sy(x.lbs).toFixed(1); });
+    var area = 'M' + f.sx(xs[0]) + ',' + f.sy(0) + ' L' + pts.join(' L') + ' L' + f.sx(xs[xs.length - 1]) + ',' + f.sy(0) + ' Z';
+    var inner = f.grid + careMarks(p, f) +
+      (m.length > 1 ? '<path d="' + area + '" fill="#f79646" fill-opacity="0.12"/>' +
+        '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#f79646" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' : '') +
+      m.map(function (x) {
+        return '<circle cx="' + f.sx(dayNum(x.date)) + '" cy="' + f.sy(x.lbs) + '" r="3.5" fill="#f79646"><title>' +
+          fmtDate(x.date) + ': ' + fmt(x.lbs) + ' lbs</title></circle>';
+      }).join('');
+    if (p.status === 'weighed' && p.finalWeight) {
+      var y = f.sy(p.finalWeight);
+      inner += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + y + '" y2="' + y + '" stroke="#6fd39a" stroke-dasharray="5 4"/>' +
+               '<text x="' + (W - PR) + '" y="' + (y - 5) + '" text-anchor="end" font-size="10" fill="#6fd39a">scale ' + fmt(p.finalWeight) + '</text>';
+    }
+    var tip = m.length === 1 ? '<div class="muted" style="margin:6px 6px 0">Add another measurement to draw the growth line.</div>' : '';
+    return svgWrap(inner) + tip;
+  }
+
+  function gainChart(p) {
+    var g = gainSeries(p);
+    if (!g.length) return '<div class="empty">Daily gain appears after your second measurement.</div>';
+    var vals = g.map(function (x) { return x.perDay; });
+    var ax = axis(Math.min(0, Math.min.apply(null, vals)), Math.max(1, Math.max.apply(null, vals)));
+    var m = sortedMeasurements(p);
+    var xs = m.map(function (x) { return dayNum(x.date); });
+    var bw = Math.max(4, Math.min(22, (W - PL - PR) / (g.length + 1) * 0.6));
+    var f = frame(xs, ax, function (v) { return fmt(v, ax.step < 1 ? 1 : 0); }, bw / 2 + 4);
+    var zero = f.sy(0);
+    var inner = f.grid + careMarks(p, f) +
+      '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + zero + '" y2="' + zero + '" stroke="#555"/>' +
+      g.map(function (x) {
+        var cx = f.sx(dayNum(x.date)), y = f.sy(x.perDay);
+        return '<rect x="' + (cx - bw / 2) + '" y="' + Math.min(y, zero) + '" width="' + bw + '" height="' + Math.max(1, Math.abs(zero - y)) +
+          '" rx="2" fill="' + (x.perDay >= 0 ? '#f79646' : '#ff6b5a') + '"><title>' + fmtDate(x.date) + ': ' + signed(x.perDay, 1) + ' lbs/day</title></rect>';
+      }).join('');
+    return svgWrap(inner) + '<div class="muted" style="margin:6px 6px 0">Lbs gained per day since the previous measurement. A sudden drop can be an early warning.</div>';
+  }
+
+  /* ------------------------------ PUMPKIN FORM --------------------------- */
+
+  function renderPumpkinForm(p) {
+    var isNew = !p;
+    var v = p || { name: '', season: new Date().getFullYear(), seed: '', pollinator: '', pollinationDate: '', status: 'growing', finalWeight: '', notes: '' };
+    var html = '<button class="link-btn back" id="back">\u2039 ' + (isNew ? 'All pumpkins' : esc(p.name)) + '</button>' +
+      '<h2 class="form-title">' + (isNew ? 'New pumpkin' : 'Edit pumpkin') + '</h2>' +
+      '<div class="card">' +
+      '<div class="f"><label for="pf-name">Name</label><input class="txt" id="pf-name" maxlength="60" placeholder="e.g. Big Girl" value="' + esc(v.name) + '"></div>' +
+      '<div class="f f-grid"><div><label for="pf-season">Season</label><input class="txt" id="pf-season" type="number" inputmode="numeric" value="' + esc(v.season) + '"></div>' +
+        '<div><label for="pf-poll">Pollinated</label><input class="txt" id="pf-poll" type="date" value="' + esc(v.pollinationDate) + '"></div></div>' +
+      '<div class="f"><label for="pf-seed">Seed (mother)</label><p class="hint">Weight and grower, e.g. 2145 McMullen</p><input class="txt" id="pf-seed" maxlength="80" value="' + esc(v.seed) + '"></div>' +
+      '<div class="f"><label for="pf-pollinator">Pollinator (father)</label><p class="hint">e.g. 2365 Paton, or \u201cself\u201d / \u201csib\u201d</p><input class="txt" id="pf-pollinator" maxlength="80" value="' + esc(v.pollinator) + '"></div>' +
+      '<div class="f f-grid"><div><label for="pf-status">Status</label><select class="sel" id="pf-status">' +
+        ['growing', 'weighed', 'retired'].map(function (s) {
+          return '<option value="' + s + '"' + (v.status === s ? ' selected' : '') + '>' + s.charAt(0).toUpperCase() + s.slice(1) + '</option>';
+        }).join('') + '</select></div>' +
+        '<div id="pf-final-wrap"><label for="pf-final">Scale weight (lbs)</label><input class="txt" id="pf-final" type="number" inputmode="decimal" step="any" value="' + esc(v.finalWeight) + '"></div></div>' +
+      '<div class="f"><label for="pf-notes">Notes</label><textarea class="area" id="pf-notes" placeholder="Patch location, soil, anything worth remembering">' + esc(v.notes) + '</textarea></div>' +
+      '</div><div class="form-error" id="pf-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save</button></div>' +
+      (isNew ? '' : '<button class="btn btn-danger" id="del" style="margin-top:22px">Delete pumpkin</button>');
+    view.log.innerHTML = html;
+
+    var $ = function (id) { return document.getElementById(id); };
+    function syncFinal() { $('pf-final-wrap').style.visibility = $('pf-status').value === 'weighed' ? 'visible' : 'hidden'; }
+    $('pf-status').onchange = syncFinal; syncFinal();
+    var back = function () { pending = null; location.replace(p ? '#pumpkin/' + p.id : '#pumpkins'); };
+    $('back').onclick = back; $('cancel').onclick = back;
+
+    $('save').onclick = function () {
+      var name = $('pf-name').value.trim();
+      var season = parseInt($('pf-season').value, 10);
+      if (!name) return showErr('pf-err', 'Give the pumpkin a name.');
+      if (!(season > 1900 && season < 3000)) return showErr('pf-err', 'Season should be a year, like ' + new Date().getFullYear() + '.');
+      var fw = parseFloat(String($('pf-final').value).replace(',', '.'));
+      var target = p || {
+        id: uid('p'), photos: [], measurements: [], careLog: [], createdAt: new Date().toISOString()
+      };
+      target.name = name;
+      target.season = season;
+      target.pollinationDate = $('pf-poll').value;
+      target.seed = $('pf-seed').value.trim();
+      target.pollinator = $('pf-pollinator').value.trim();
+      target.status = $('pf-status').value;
+      target.finalWeight = target.status === 'weighed' && fw > 0 ? fw : '';
+      target.notes = $('pf-notes').value.trim();
+      touch(target);
+      if (isNew) db.pumpkins.push(target);
+      if (!persist()) return;
+      if (isNew && pending) { location.replace('#measure/' + target.id); return; }
+      toast(isNew ? 'Pumpkin added' : 'Saved');
+      location.replace('#pumpkin/' + target.id);
+    };
+
+    if (!isNew) $('del').onclick = function () {
+      if (!confirm('Delete \u201c' + p.name + '\u201d and all of its measurements and care entries? This can\u2019t be undone.')) return;
+      db.pumpkins = db.pumpkins.filter(function (x) { return x.id !== p.id; });
+      persist(); toast('Pumpkin deleted'); location.replace('#pumpkins');
+    };
+  }
+
+  function showErr(id, msg) { var e = document.getElementById(id); e.textContent = msg; e.hidden = false; }
+
+  /* ------------------------------ MEASUREMENT FORM ----------------------- */
+
+  function renderMeasureForm(p, mid) {
+    var existing = null;
+    if (mid) p.measurements.forEach(function (x) { if (x.id === mid) existing = x; });
+    var v = existing || (pending ? { date: today(), circumference: pending.c, sideToSide: pending.s, endToEnd: pending.e, note: '' }
+                                 : { date: today(), circumference: '', sideToSide: '', endToEnd: '', note: '' });
+    pending = null;
+
+    function numField(id, label, hint, val) {
+      return '<div class="f"><label for="' + id + '">' + label + '</label><p class="hint">' + hint + '</p>' +
+        '<div class="input-wrap"><input id="' + id + '" type="number" inputmode="decimal" step="any" min="0" placeholder="0" value="' + esc(val) + '"><span class="unit">in</span></div></div>';
+    }
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 ' + esc(p.name) + '</button>' +
+      '<h2 class="form-title">' + (existing ? 'Edit measurement' : 'New measurement') + '</h2>' +
+      '<div class="card">' +
+      '<div class="f"><label for="mf-date">Date</label><input class="txt" id="mf-date" type="date" value="' + esc(v.date) + '"></div>' +
+      numField('mf-c', 'Circumference', 'All the way around the middle', v.circumference) +
+      numField('mf-s', 'Side to side', 'Ground to ground, over the top', v.sideToSide) +
+      numField('mf-e', 'End to end', 'Stem to blossom, ground to ground', v.endToEnd) +
+      '<div class="f"><label for="mf-note">Note <span class="muted">(optional)</span></label><input class="txt" id="mf-note" maxlength="140" value="' + esc(v.note) + '"></div>' +
+      '</div><div class="live-est" id="mf-live"></div><div class="form-error" id="mf-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save</button></div>' +
+      (existing ? '<button class="btn btn-danger" id="del" style="margin-top:22px">Delete measurement</button>' : '');
+
+    var $ = function (id) { return document.getElementById(id); };
+    function est() { return window.OTT.estimate($('mf-c').value, $('mf-s').value, $('mf-e').value); }
+    function live() {
+      var r = est(), el = $('mf-live');
+      if (r.ok) el.innerHTML = 'OTT ' + fmt(r.ott, 3) + '\u2033 \u2192 <b>' + fmt(r.lbs) + ' lbs</b>' + (r.inChartRange ? '' : '<br><span style="color:var(--orange)">' + esc(r.rangeNote) + '</span>');
+      else el.textContent = 'Enter all three measurements to see the estimate.';
+    }
+    ['mf-c', 'mf-s', 'mf-e'].forEach(function (id) { $(id).addEventListener('input', live); });
+    live();
+    var back = function () { location.replace('#pumpkin/' + p.id); };
+    $('back').onclick = back; $('cancel').onclick = back;
+
+    $('save').onclick = function () {
+      var r = est();
+      if (!dayNum($('mf-date').value)) return showErr('mf-err', 'Pick a date.');
+      if (!r.ok) return showErr('mf-err', r.reason || 'Check the three measurements.');
+      var rec = existing || { id: uid('m') };
+      rec.date = $('mf-date').value;
+      rec.circumference = r.measurements.circumference;
+      rec.sideToSide = r.measurements.sideToSide;
+      rec.endToEnd = r.measurements.endToEnd;
+      rec.ott = r.ott;
+      rec.lbs = r.lbs;
+      rec.note = $('mf-note').value.trim();
+      if (!existing) p.measurements.push(rec);
+      touch(p);
+      if (!persist()) return;
+      toast('Measurement saved \u2013 ' + fmt(r.lbs) + ' lbs');
+      back();
+    };
+    if (existing) $('del').onclick = function () {
+      if (!confirm('Delete the ' + fmtDate(existing.date, true) + ' measurement?')) return;
+      p.measurements = p.measurements.filter(function (x) { return x.id !== existing.id; });
+      touch(p); persist(); toast('Measurement deleted'); back();
+    };
+  }
+
+  /* ------------------------------ CARE FORM ------------------------------ */
+
+  function renderCareForm(p, cid) {
+    var existing = null;
+    if (cid) p.careLog.forEach(function (x) { if (x.id === cid) existing = x; });
+    var v = existing || { date: today(), type: CARE_TYPES[0], product: '', amount: '', note: '' };
+
+    // Offer products used before on any pumpkin, so repeat entries are one tap
+    var seen = {};
+    db.pumpkins.forEach(function (x) { x.careLog.forEach(function (c) { if (c.product) seen[c.product] = 1; }); });
+
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 ' + esc(p.name) + '</button>' +
+      '<h2 class="form-title">' + (existing ? 'Edit care entry' : 'Care / nutrient entry') + '</h2>' +
+      '<div class="card">' +
+      '<div class="f f-grid"><div><label for="cf-date">Date</label><input class="txt" id="cf-date" type="date" value="' + esc(v.date) + '"></div>' +
+        '<div><label for="cf-type">Type</label><select class="sel" id="cf-type">' +
+        CARE_TYPES.map(function (t) { return '<option' + (t === v.type ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') +
+        '</select></div></div>' +
+      '<div class="f"><label for="cf-product">Product</label><p class="hint">e.g. 10-52-10, fish emulsion, kelp, calcium nitrate</p>' +
+        '<input class="txt" id="cf-product" list="cf-products" maxlength="80" value="' + esc(v.product) + '">' +
+        '<datalist id="cf-products">' + Object.keys(seen).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="f"><label for="cf-amount">Amount / rate</label><p class="hint">e.g. 1 tbsp per gallon, 2 lbs per 100 sq ft</p><input class="txt" id="cf-amount" maxlength="80" value="' + esc(v.amount) + '"></div>' +
+      '<div class="f"><label for="cf-note">Notes</label><textarea class="area" id="cf-note" placeholder="Where applied, weather, what you saw">' + esc(v.note) + '</textarea></div>' +
+      '</div>' +
+      (existing ? '' : '<label class="muted" style="display:flex;gap:10px;align-items:center;margin:14px 2px 0"><input type="checkbox" id="cf-all" style="width:22px;height:22px"> Also add to my other growing pumpkins this season</label>') +
+      '<div class="form-error" id="cf-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save</button></div>' +
+      (existing ? '<button class="btn btn-danger" id="del" style="margin-top:22px">Delete entry</button>' : '');
+
+    var $ = function (id) { return document.getElementById(id); };
+    var back = function () { location.replace('#pumpkin/' + p.id); };
+    $('back').onclick = back; $('cancel').onclick = back;
+
+    $('save').onclick = function () {
+      if (!dayNum($('cf-date').value)) return showErr('cf-err', 'Pick a date.');
+      var fields = {
+        date: $('cf-date').value, type: $('cf-type').value,
+        product: $('cf-product').value.trim(), amount: $('cf-amount').value.trim(), note: $('cf-note').value.trim()
+      };
+      if (!fields.product && !fields.note) return showErr('cf-err', 'Add a product or a note.');
+      if (existing) { for (var k in fields) existing[k] = fields[k]; touch(p); }
+      else {
+        var targets = [p];
+        if ($('cf-all') && $('cf-all').checked) {
+          db.pumpkins.forEach(function (x) { if (x !== p && x.season === p.season && x.status === 'growing') targets.push(x); });
+        }
+        targets.forEach(function (t) {
+          var rec = { id: uid('c') }; for (var k2 in fields) rec[k2] = fields[k2];
+          t.careLog.push(rec); touch(t);
+        });
+        if (targets.length > 1) { if (persist()) toast('Added to ' + targets.length + ' pumpkins'); back(); return; }
+      }
+      if (!persist()) return;
+      toast('Saved'); back();
+    };
+    if (existing) $('del').onclick = function () {
+      if (!confirm('Delete this care entry?')) return;
+      p.careLog = p.careLog.filter(function (x) { return x.id !== existing.id; });
+      touch(p); persist(); toast('Entry deleted'); back();
+    };
+  }
+
+  /* ------------------------------ SAVE FROM CALCULATOR ------------------- */
+
+  var savePanel = document.getElementById('save-panel');
+  var saveBtn = document.getElementById('save-to-pumpkin');
+  var calcInputs = ['circumference', 'side-to-side', 'end-to-end'].map(function (id) { return document.getElementById(id); });
+
+  function refreshSavePanel() {
+    var r = window.OTT.estimate(calcInputs[0].value, calcInputs[1].value, calcInputs[2].value);
+    saveBtn.hidden = !r.ok;
+    if (!r.ok) savePanel.hidden = true;
+  }
+  calcInputs.forEach(function (i) { i.addEventListener('input', refreshSavePanel); });
+  document.getElementById('clear').addEventListener('click', function () { setTimeout(refreshSavePanel, 0); });
+
+  saveBtn.onclick = function () {
+    var growing = db.pumpkins.filter(function (p) { return p.status === 'growing'; });
+    var others = db.pumpkins.filter(function (p) { return p.status !== 'growing'; });
+    var opt = function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + p.season + ')</option>'; };
+    savePanel.innerHTML =
+      '<div class="f"><label for="sp-pick">Save this measurement to</label><select class="sel" id="sp-pick">' +
+      growing.map(opt).join('') +
+      (others.length ? '<optgroup label="Not growing">' + others.map(opt).join('') + '</optgroup>' : '') +
+      '<option value="__new">+ New pumpkin\u2026</option></select></div>' +
+      '<div class="btn-row"><button class="btn" id="sp-cancel">Cancel</button><button class="btn btn-primary" id="sp-go">Continue</button></div>';
+    savePanel.hidden = false;
+    document.getElementById('sp-cancel').onclick = function () { savePanel.hidden = true; };
+    document.getElementById('sp-go').onclick = function () {
+      pending = { c: calcInputs[0].value, s: calcInputs[1].value, e: calcInputs[2].value };
+      var id = document.getElementById('sp-pick').value;
+      savePanel.hidden = true;
+      go(id === '__new' ? '#new' : '#measure/' + id);
+    };
+    savePanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  /* ------------------------------ BACKUP --------------------------------- */
+
+  function backupBoxHtml() {
+    var last = localStorage.getItem(BACKUP_KEY);
+    var count = db.pumpkins.length;
+    var due = count && (!last || (Date.now() - new Date(last).getTime()) > 14 * 86400000);
+    return '<div class="backup' + (due ? ' is-due' : '') + '"><h3>Backup</h3>' +
+      '<p class="muted" style="margin:0 0 12px">Your pumpkins are saved only on this device. ' +
+      (last ? 'Last backup: <b style="color:var(--white)">' + fmtDate(last.slice(0, 10), true) + '</b>.' : 'You haven\u2019t made a backup yet.') +
+      (due ? ' <span style="color:var(--orange)">Time for a fresh one.</span>' : '') + '</p>' +
+      '<div class="btn-row" style="margin-top:0"><button class="btn" id="bk-export">Back up</button>' +
+      '<button class="btn" id="bk-import">Restore</button></div>' +
+      '<input type="file" id="bk-file" accept=".json,application/json" hidden></div>';
+  }
+
+  function wireBackup() {
+    document.getElementById('bk-export').onclick = exportData;
+    document.getElementById('bk-import').onclick = function () { document.getElementById('bk-file').click(); };
+    document.getElementById('bk-file').onchange = function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (file) importData(file);
+      e.target.value = '';
+    };
+  }
+
+  function exportData() {
+    if (!db.pumpkins.length) { toast('Nothing to back up yet'); return; }
+    var payload = JSON.stringify({ app: 'giant-pumpkin-ott', version: 1, exportedAt: new Date().toISOString(), pumpkins: db.pumpkins }, null, 2);
+    var name = 'pumpkin-log-' + today() + '.json';
+    var done = function () { localStorage.setItem(BACKUP_KEY, new Date().toISOString()); renderList(); };
+    var file;
+    try { file = new File([payload], name, { type: 'application/json' }); } catch (e) { file = null; }
+
+    // iPhone: the share sheet lets you "Save to Files", AirDrop or email it
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Pumpkin log backup' })
+        .then(function () { done(); toast('Backup saved'); })
+        .catch(function (err) { if (err && err.name !== 'AbortError') downloadFallback(payload, name, done); });
+      return;
+    }
+    downloadFallback(payload, name, done);
+  }
+
+  function downloadFallback(payload, name, done) {
+    var url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    done(); toast('Backup downloaded');
+  }
+
+  function importData(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data;
+      try { data = JSON.parse(reader.result); } catch (e) { toast('That file isn\u2019t a pumpkin backup.'); return; }
+      if (!data || data.app !== 'giant-pumpkin-ott' || !Array.isArray(data.pumpkins)) { toast('That file isn\u2019t a pumpkin backup.'); return; }
+      var incoming = data.pumpkins.filter(function (p) { return p && p.id && p.name; }).map(normalize);
+      if (!confirm('Restore ' + incoming.length + ' pumpkin' + (incoming.length === 1 ? '' : 's') + ' from ' +
+          (data.exportedAt ? fmtDate(data.exportedAt.slice(0, 10), true) : 'this backup') +
+          '?\n\nPumpkins that are both in the backup and on this phone are replaced with the backup\u2019s version. Everything else is kept.')) return;
+      incoming.forEach(function (p) {
+        var i = -1;
+        db.pumpkins.forEach(function (x, j) { if (x.id === p.id) i = j; });
+        if (i >= 0) db.pumpkins[i] = p; else db.pumpkins.push(p);
+      });
+      if (persist()) { toast('Restored ' + incoming.length + ' pumpkin' + (incoming.length === 1 ? '' : 's')); renderList(); }
+    };
+    reader.readAsText(file);
+  }
+
+  function normalize(p) {
+    p.measurements = Array.isArray(p.measurements) ? p.measurements : [];
+    p.careLog = Array.isArray(p.careLog) ? p.careLog : [];
+    p.photos = Array.isArray(p.photos) ? p.photos : [];
+    p.season = +p.season || new Date().getFullYear();
+    p.status = ['growing', 'weighed', 'retired'].indexOf(p.status) >= 0 ? p.status : 'growing';
+    ['seed', 'pollinator', 'pollinationDate', 'notes', 'finalWeight'].forEach(function (k) { if (p[k] === undefined || p[k] === null) p[k] = ''; });
+    return p;
+  }
+
+  db.pumpkins = db.pumpkins.map(normalize);
+  route();
 })();
 
 </script>
