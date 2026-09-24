@@ -563,6 +563,27 @@ input[type=date].txt { min-width: 0; }
   box-shadow: 0 8px 30px rgba(0,0,0,0.5);
 }
 
+/* Photos */
+.section-title .link-btn { padding: 0; font-size: 0.85rem; letter-spacing: 0; text-transform: none; }
+.ph-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ph-tile {
+  position: relative; padding: 0; border: 1px solid var(--panel-edge); border-radius: 10px;
+  overflow: hidden; background: var(--panel); aspect-ratio: 1 / 1; cursor: pointer;
+}
+.ph-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ph-tile span {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 5px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8)); color: var(--white);
+  font: 700 0.72rem var(--font); text-align: left;
+}
+.ph-full { display: block; width: 100%; max-height: 70vh; object-fit: contain; border-radius: var(--radius); background: var(--panel); min-height: 120px; }
+.ph-info { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin-top: 10px; font-size: 0.9rem; color: var(--grey); }
+.ph-info b { color: var(--white); }
+.pk-card.has-thumb { display: flex; gap: 12px; align-items: center; }
+.pk-body { flex: 1; min-width: 0; }
+.pk-thumb { flex: 0 0 64px; width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: #1c1c1c; }
+.btn[disabled] { opacity: 0.4; }
+
 </style>
 </head>
 
@@ -1141,14 +1162,18 @@ window.OTT_TABLE_2025 = {
      {
        id, name, season (year), seed, pollinator, pollinationDate ('YYYY-MM-DD'),
        status ('growing' | 'weighed' | 'retired'), finalWeight (lbs, scale),
-       notes, photos: [],
+       notes,
+       photos: [ { id, date, caption } ]   <- picture files live in IndexedDB
+                                              ('ottlog-photos'), keyed by id
        measurements: [ { id, date, circumference, sideToSide, endToEnd, ott, lbs, note } ],
        careLog:      [ { id, date, type, product, amount, note } ],
        createdAt, updatedAt
      }
 
    RULE: weights always come from window.OTT.estimate(). No formulas here.
-   Data lives only on this device - the Backup box exports/imports a file.
+   Data lives only on this device - the Backup box exports/imports a file
+   (photos included). NOTE: on iPhone, removing the app from the home screen
+   erases this data, so the app warns people to back up first.
    ============================================================================= */
 
 (function () {
@@ -1307,6 +1332,7 @@ window.OTT_TABLE_2025 = {
     else if (name === 'edit') renderPumpkinForm(p);
     else if (name === 'measure') renderMeasureForm(p, sub);
     else if (name === 'care') renderCareForm(p, sub);
+    else if (name === 'photo') renderPhotoViewer(p, sub);
     else renderList();
     window.scrollTo(0, 0);
   }
@@ -1359,19 +1385,22 @@ window.OTT_TABLE_2025 = {
       var weight = p.status === 'weighed' && p.finalWeight
         ? fmt(p.finalWeight) + ' <small>lbs actual</small>'
         : l ? fmt(l.lbs) + ' <small>lbs est.</small>' : '<small>no measurements</small>';
-      html += '<button class="pk-card" data-id="' + esc(p.id) + '">' +
-        '<div class="pk-top"><span class="pk-name">' + esc(p.name) + '</span><span class="pk-weight">' + weight + '</span></div>' +
+      var cover = p.photos.length ? latestPhoto(p) : null;
+      html += '<button class="pk-card' + (cover ? ' has-thumb' : '') + '" data-id="' + esc(p.id) + '">' +
+        (cover ? '<img class="pk-thumb" alt="" data-thumb="' + esc(cover.id) + '">' : '') +
+        '<div class="pk-body"><div class="pk-top"><span class="pk-name">' + esc(p.name) + '</span><span class="pk-weight">' + weight + '</span></div>' +
         (cross(p) ? '<div class="pk-cross">' + esc(cross(p)) + '</div>' : '') +
         '<div class="pk-meta">' +
           '<span class="badge is-' + p.status + '">' + p.status + '</span>' +
           (d !== null && d >= 0 ? '<span><b>' + d + '</b> DAP</span>' : '') +
           (g && p.status === 'growing' ? '<span><b>' + signed(g.perDay, 1) + '</b> lbs/day</span>' : '') +
           (l ? '<span>Last measured <b>' + fmtDate(l.date) + '</b></span>' : '') +
-        '</div></button>';
+        '</div></div></button>';
     });
 
     html += backupBoxHtml();
     view.log.innerHTML = html;
+    loadThumbs(view.log);
 
     view.log.querySelector('#add-pumpkin').onclick = function () { go('#new'); };
     Array.prototype.forEach.call(view.log.querySelectorAll('.pk-card'), function (b) {
@@ -1457,6 +1486,18 @@ window.OTT_TABLE_2025 = {
       }).join('') + '</div>';
     }
 
+    // Photos
+    html += '<div class="section-title">Photos<button class="link-btn" id="add-ph">+ Add photo</button></div>' +
+      '<input type="file" id="ph-file" accept="image/*" hidden>';
+    if (!p.photos.length) html += '<div class="list"><div class="empty">Add photos to see your pumpkin grow. Take one each time you measure.</div></div>';
+    else {
+      html += '<div class="ph-grid">' + sortedPhotos(p).slice().reverse().map(function (ph) {
+        var dd = dap(p, ph.date);
+        return '<button class="ph-tile" data-ph="' + esc(ph.id) + '"><img alt="" data-thumb="' + esc(ph.id) + '">' +
+          '<span>' + fmtDate(ph.date) + (dd !== null && dd >= 0 ? ' \u00b7 ' + dd + 'd' : '') + '</span></button>';
+      }).join('') + '</div>';
+    }
+
     // Notes
     if (p.notes) html += '<div class="section-title">Notes</div><div class="notes-box">' + esc(p.notes) + '</div>';
 
@@ -1465,6 +1506,15 @@ window.OTT_TABLE_2025 = {
     view.log.querySelector('#edit').onclick = function () { go('#edit/' + p.id); };
     view.log.querySelector('#add-m').onclick = function () { go('#measure/' + p.id); };
     view.log.querySelector('#add-c').onclick = function () { go('#care/' + p.id); };
+    loadThumbs(view.log);
+    view.log.querySelector('#add-ph').onclick = function () { view.log.querySelector('#ph-file').click(); };
+    view.log.querySelector('#ph-file').onchange = function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (f) renderPhotoForm(p, f);
+    };
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-ph]'), function (b) {
+      b.onclick = function () { go('#photo/' + p.id + '/' + b.getAttribute('data-ph')); };
+    });
     Array.prototype.forEach.call(view.log.querySelectorAll('[data-mode]'), function (b) {
       b.onclick = function () { chartMode = b.getAttribute('data-mode'); renderDetail(p); };
     });
@@ -1642,7 +1692,8 @@ window.OTT_TABLE_2025 = {
     };
 
     if (!isNew) $('del').onclick = function () {
-      if (!confirm('Delete \u201c' + p.name + '\u201d and all of its measurements and care entries? This can\u2019t be undone.')) return;
+      if (!confirm('Delete \u201c' + p.name + '\u201d and all of its measurements, care entries and photos? This can\u2019t be undone.')) return;
+      p.photos.forEach(function (ph) { photoStore.del(ph.id).catch(function () {}); });
       db.pumpkins = db.pumpkins.filter(function (x) { return x.id !== p.id; });
       persist(); toast('Pumpkin deleted'); location.replace('#pumpkins');
     };
@@ -1821,12 +1872,15 @@ window.OTT_TABLE_2025 = {
       '<p class="muted" style="margin:0 0 12px">Your pumpkins are saved only on this device. ' +
       (last ? 'Last backup: <b style="color:var(--white)">' + fmtDate(last.slice(0, 10), true) + '</b>.' : 'You haven\u2019t made a backup yet.') +
       (due ? ' <span style="color:var(--orange)">Time for a fresh one.</span>' : '') + '</p>' +
+      '<p class="muted" style="margin:0 0 12px"><b style="color:var(--white)">Before removing the app from your home screen, back up</b> \u2013 removing it erases everything saved in it. Save backups to iCloud Drive (free) so they\u2019re off your phone.</p>' +
+      '<p class="muted" id="bk-usage" style="margin:0 0 12px"></p>' +
       '<div class="btn-row" style="margin-top:0"><button class="btn" id="bk-export">Back up</button>' +
       '<button class="btn" id="bk-import">Restore</button></div>' +
       '<input type="file" id="bk-file" accept=".json,application/json" hidden></div>';
   }
 
   function wireBackup() {
+    showUsage();
     document.getElementById('bk-export').onclick = exportData;
     document.getElementById('bk-import').onclick = function () { document.getElementById('bk-file').click(); };
     document.getElementById('bk-file').onchange = function (e) {
@@ -1836,22 +1890,57 @@ window.OTT_TABLE_2025 = {
     };
   }
 
+  function bufToDataUrl(buf, type) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(fr.result); };
+      fr.onerror = function () { rej(fr.error); };
+      fr.readAsDataURL(new Blob([buf], { type: type || 'image/jpeg' }));
+    });
+  }
+  function dataUrlToBuf(s) {
+    var bin = atob(String(s).split(',')[1] || ''), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+
   function exportData() {
     if (!db.pumpkins.length) { toast('Nothing to back up yet'); return; }
-    var payload = JSON.stringify({ app: 'giant-pumpkin-ott', version: 1, exportedAt: new Date().toISOString(), pumpkins: db.pumpkins }, null, 2);
-    var name = 'pumpkin-log-' + today() + '.json';
-    var done = function () { localStorage.setItem(BACKUP_KEY, new Date().toISOString()); renderList(); };
-    var file;
-    try { file = new File([payload], name, { type: 'application/json' }); } catch (e) { file = null; }
+    var btn = document.getElementById('bk-export');
+    if (btn) { btn.disabled = true; btn.textContent = 'Packing\u2026'; }
+    var ids = [];
+    db.pumpkins.forEach(function (p) { p.photos.forEach(function (ph) { ids.push(ph.id); }); });
 
-    // iPhone: the share sheet lets you "Save to Files", AirDrop or email it
-    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Pumpkin log backup' })
-        .then(function () { done(); toast('Backup saved'); })
-        .catch(function (err) { if (err && err.name !== 'AbortError') downloadFallback(payload, name, done); });
-      return;
-    }
-    downloadFallback(payload, name, done);
+    // Photos ride along inside the backup file so one file restores everything
+    Promise.all(ids.map(function (id) {
+      return photoStore.get(id).then(function (rec) {
+        if (!rec) return null;
+        return Promise.all([bufToDataUrl(rec.full, rec.type), bufToDataUrl(rec.thumb)]).then(function (d) {
+          return { id: rec.id, pumpkinId: rec.pumpkinId, type: rec.type, w: rec.w, h: rec.h, full: d[0], thumb: d[1] };
+        });
+      }).catch(function () { return null; });
+    })).then(function (photos) {
+      var payload = JSON.stringify({
+        app: 'giant-pumpkin-ott', version: 2, exportedAt: new Date().toISOString(),
+        pumpkins: db.pumpkins, photos: photos.filter(Boolean)
+      });
+      var name = 'pumpkin-log-' + today() + '.json';
+      var done = function () { localStorage.setItem(BACKUP_KEY, new Date().toISOString()); renderList(); };
+      var file;
+      try { file = new File([payload], name, { type: 'application/json' }); } catch (e) { file = null; }
+
+      // iPhone: the share sheet lets you "Save to Files" (iCloud Drive), AirDrop or email it
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Pumpkin log backup' })
+          .then(function () { done(); toast('Backup saved'); })
+          .catch(function (err) {
+            if (err && err.name !== 'AbortError') downloadFallback(payload, name, done);
+            else renderList();
+          });
+        return;
+      }
+      downloadFallback(payload, name, done);
+    });
   }
 
   function downloadFallback(payload, name, done) {
@@ -1869,15 +1958,26 @@ window.OTT_TABLE_2025 = {
       try { data = JSON.parse(reader.result); } catch (e) { toast('That file isn\u2019t a pumpkin backup.'); return; }
       if (!data || data.app !== 'giant-pumpkin-ott' || !Array.isArray(data.pumpkins)) { toast('That file isn\u2019t a pumpkin backup.'); return; }
       var incoming = data.pumpkins.filter(function (p) { return p && p.id && p.name; }).map(normalize);
-      if (!confirm('Restore ' + incoming.length + ' pumpkin' + (incoming.length === 1 ? '' : 's') + ' from ' +
+      var photos = Array.isArray(data.photos) ? data.photos.filter(function (x) { return x && x.id && x.full; }) : [];
+      if (!confirm('Restore ' + incoming.length + ' pumpkin' + (incoming.length === 1 ? '' : 's') +
+          (photos.length ? ' and ' + photos.length + ' photo' + (photos.length === 1 ? '' : 's') : '') + ' from ' +
           (data.exportedAt ? fmtDate(data.exportedAt.slice(0, 10), true) : 'this backup') +
           '?\n\nPumpkins that are both in the backup and on this phone are replaced with the backup\u2019s version. Everything else is kept.')) return;
-      incoming.forEach(function (p) {
-        var i = -1;
-        db.pumpkins.forEach(function (x, j) { if (x.id === p.id) i = j; });
-        if (i >= 0) db.pumpkins[i] = p; else db.pumpkins.push(p);
+
+      var saves = photos.map(function (ph) {
+        return photoStore.put({
+          id: ph.id, pumpkinId: ph.pumpkinId, type: ph.type || 'image/jpeg', w: ph.w, h: ph.h,
+          full: dataUrlToBuf(ph.full), thumb: dataUrlToBuf(ph.thumb || ph.full)
+        });
       });
-      if (persist()) { toast('Restored ' + incoming.length + ' pumpkin' + (incoming.length === 1 ? '' : 's')); renderList(); }
+      Promise.all(saves).then(function () {
+        incoming.forEach(function (p) {
+          var i = -1;
+          db.pumpkins.forEach(function (x, j) { if (x.id === p.id) i = j; });
+          if (i >= 0) db.pumpkins[i] = p; else db.pumpkins.push(p);
+        });
+        if (persist()) { toast('Restored ' + incoming.length + ' pumpkin' + (incoming.length === 1 ? '' : 's')); renderList(); }
+      }).catch(function () { toast('Not enough space on this phone to restore the photos.'); });
     };
     reader.readAsText(file);
   }
@@ -1885,11 +1985,190 @@ window.OTT_TABLE_2025 = {
   function normalize(p) {
     p.measurements = Array.isArray(p.measurements) ? p.measurements : [];
     p.careLog = Array.isArray(p.careLog) ? p.careLog : [];
-    p.photos = Array.isArray(p.photos) ? p.photos : [];
+    p.photos = (Array.isArray(p.photos) ? p.photos : []).filter(function (x) { return x && x.id; });
     p.season = +p.season || new Date().getFullYear();
     p.status = ['growing', 'weighed', 'retired'].indexOf(p.status) >= 0 ? p.status : 'growing';
     ['seed', 'pollinator', 'pollinationDate', 'notes', 'finalWeight'].forEach(function (k) { if (p[k] === undefined || p[k] === null) p[k] = ''; });
     return p;
+  }
+
+  /* ------------------------------ PHOTOS --------------------------------- */
+  /* Pictures are shrunk on the phone (max 1600 px, JPEG) and kept in
+     IndexedDB, which holds far more than localStorage. Stored as ArrayBuffers
+     rather than Blobs because older iPhone Safari versions mishandled Blobs. */
+
+  var photoStore = (function () {
+    var dbp = null;
+    function open() {
+      if (!dbp) dbp = new Promise(function (res, rej) {
+        if (!window.indexedDB) { rej(new Error('Photo storage isn\u2019t available in this browser.')); return; }
+        var r = indexedDB.open('ottlog-photos', 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore('photos', { keyPath: 'id' }); };
+        r.onsuccess = function () { res(r.result); };
+        r.onerror = function () { rej(r.error); };
+      });
+      return dbp;
+    }
+    function run(mode, fn) {
+      return open().then(function (d) {
+        return new Promise(function (res, rej) {
+          var t = d.transaction('photos', mode), req = fn(t.objectStore('photos'));
+          t.oncomplete = function () { res(req ? req.result : undefined); };
+          t.onerror = function () { rej(t.error); };
+          t.onabort = function () { rej(t.error || new Error('Storage is full')); };
+        });
+      });
+    }
+    return {
+      put: function (rec) { return run('readwrite', function (st) { st.put(rec); }); },
+      get: function (id) { return run('readonly', function (st) { return st.get(id); }); },
+      del: function (id) { return run('readwrite', function (st) { st.delete(id); }); }
+    };
+  })();
+
+  var thumbUrls = {};
+  function bufToUrl(buf, type) { return URL.createObjectURL(new Blob([buf], { type: type || 'image/jpeg' })); }
+  function loadThumbs(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('img[data-thumb]'), function (img) {
+      var id = img.getAttribute('data-thumb');
+      if (thumbUrls[id]) { img.src = thumbUrls[id]; return; }
+      photoStore.get(id).then(function (rec) {
+        if (rec && rec.thumb) { thumbUrls[id] = bufToUrl(rec.thumb); img.src = thumbUrls[id]; }
+      }).catch(function () {});
+    });
+  }
+
+  function sortedPhotos(p) {
+    return p.photos.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  }
+  function latestPhoto(p) { var s = sortedPhotos(p); return s[s.length - 1]; }
+
+  function shrink(file, maxEdge, quality) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, maxEdge / Math.max(w, h));
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (blob) {
+          if (!blob) { rej(new Error('Could not process that picture.')); return; }
+          blob.arrayBuffer().then(function (buf) { res({ buf: buf, w: c.width, h: c.height }); }, rej);
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('That file couldn\u2019t be opened as a picture.')); };
+      img.src = url;
+    });
+  }
+
+  function nearestEstimate(p, date) {
+    var best = null, bd = 1e9, d0 = dayNum(date);
+    p.measurements.forEach(function (m) {
+      var diff = Math.abs(dayNum(m.date) - d0);
+      if (diff < bd) { bd = diff; best = m; }
+    });
+    return best && bd <= 3 ? best : null;
+  }
+
+  function renderPhotoForm(p, file) {
+    var previewUrl = URL.createObjectURL(file);
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 ' + esc(p.name) + '</button>' +
+      '<h2 class="form-title">New photo</h2>' +
+      '<img class="ph-full" id="pf-img" alt="">' +
+      '<div class="card" style="margin-top:14px">' +
+      '<div class="f"><label for="ph-date">Date taken</label><input class="txt" id="ph-date" type="date" value="' + today() + '"></div>' +
+      '<div class="f"><label for="ph-cap">Caption <span class="muted">(optional)</span></label><input class="txt" id="ph-cap" maxlength="140" placeholder="e.g. First week off the vine"></div>' +
+      '</div><div class="form-error" id="ph-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save photo</button></div>';
+    var $ = function (id) { return document.getElementById(id); };
+    $('pf-img').src = previewUrl;
+    var back = function () { URL.revokeObjectURL(previewUrl); renderDetail(p); window.scrollTo(0, 0); };
+    $('back').onclick = back; $('cancel').onclick = back;
+    $('save').onclick = function () {
+      if (!dayNum($('ph-date').value)) return showErr('ph-err', 'Pick a date.');
+      var btn = $('save'); btn.disabled = true; btn.textContent = 'Saving\u2026';
+      Promise.all([shrink(file, 1600, 0.82), shrink(file, 360, 0.75)]).then(function (r) {
+        var meta = { id: uid('ph'), date: $('ph-date').value, caption: $('ph-cap').value.trim() };
+        return photoStore.put({ id: meta.id, pumpkinId: p.id, type: 'image/jpeg', full: r[0].buf, thumb: r[1].buf, w: r[0].w, h: r[0].h })
+          .then(function () {
+            p.photos.push(meta); touch(p);
+            if (!persist()) return;
+            if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+            toast('Photo saved'); back();
+          });
+      }).catch(function (err) {
+        btn.disabled = false; btn.textContent = 'Save photo';
+        showErr('ph-err', (err && err.message) || 'Could not save the photo.');
+      });
+    };
+  }
+
+  var viewerUrl = null;
+  function renderPhotoViewer(p, phId) {
+    var meta = null;
+    p.photos.forEach(function (x) { if (x.id === phId) meta = x; });
+    if (!meta) { location.replace('#pumpkin/' + p.id); return; }
+    var dd = dap(p, meta.date), est = nearestEstimate(p, meta.date);
+    var list = sortedPhotos(p), idx = list.indexOf(meta);
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 ' + esc(p.name) + '</button>' +
+      '<img class="ph-full" id="pv-img" alt="">' +
+      '<div class="ph-info"><b>' + fmtDate(meta.date, true) + '</b>' +
+        (dd !== null && dd >= 0 ? ' \u00b7 ' + dd + ' DAP' : '') +
+        (est ? ' \u00b7 est. ' + fmt(est.lbs) + ' lbs' : '') +
+        '<span class="muted">' + (idx + 1) + ' of ' + list.length + '</span></div>' +
+      (list.length > 1 ? '<div class="btn-row"><button class="btn" id="pv-prev"' + (idx === 0 ? ' disabled' : '') + '>\u2039 Older</button>' +
+        '<button class="btn" id="pv-next"' + (idx === list.length - 1 ? ' disabled' : '') + '>Newer \u203a</button></div>' : '') +
+      '<div class="card" style="margin-top:14px">' +
+      '<div class="f"><label for="pv-date">Date taken</label><input class="txt" id="pv-date" type="date" value="' + esc(meta.date) + '"></div>' +
+      '<div class="f"><label for="pv-cap">Caption</label><input class="txt" id="pv-cap" maxlength="140" value="' + esc(meta.caption) + '"></div>' +
+      '</div>' +
+      '<div class="btn-row"><button class="btn" id="pv-share">Share / Save</button><button class="btn btn-primary" id="pv-save">Save changes</button></div>' +
+      '<button class="btn btn-danger" id="pv-del" style="margin-top:22px">Delete photo</button>';
+    var $ = function (id) { return document.getElementById(id); };
+    if (viewerUrl) { URL.revokeObjectURL(viewerUrl); viewerUrl = null; }
+    var rec = null;
+    photoStore.get(meta.id).then(function (r) {
+      rec = r;
+      if (r && r.full) { viewerUrl = bufToUrl(r.full, r.type); $('pv-img').src = viewerUrl; }
+      else $('pv-img').alt = 'Picture file missing on this phone';
+    });
+    var back = function () { location.replace('#pumpkin/' + p.id); };
+    $('back').onclick = back;
+    if ($('pv-prev')) $('pv-prev').onclick = function () { location.replace('#photo/' + p.id + '/' + list[idx - 1].id); };
+    if ($('pv-next')) $('pv-next').onclick = function () { location.replace('#photo/' + p.id + '/' + list[idx + 1].id); };
+    $('pv-save').onclick = function () {
+      if (!dayNum($('pv-date').value)) { toast('Pick a date'); return; }
+      meta.date = $('pv-date').value; meta.caption = $('pv-cap').value.trim();
+      touch(p); if (persist()) { toast('Saved'); renderPhotoViewer(p, meta.id); }
+    };
+    $('pv-share').onclick = function () {
+      if (!rec || !rec.full) return;
+      var f = new File([rec.full], (p.name + ' ' + meta.date).replace(/[^\w\- ]+/g, '') + '.jpg', { type: 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f] }).catch(function () {});
+      else { var a = document.createElement('a'); a.href = viewerUrl; a.download = f.name; a.click(); }
+    };
+    $('pv-del').onclick = function () {
+      if (!confirm('Delete this photo? This can\u2019t be undone.')) return;
+      photoStore.del(meta.id).catch(function () {});
+      p.photos = p.photos.filter(function (x) { return x.id !== meta.id; });
+      delete thumbUrls[meta.id];
+      touch(p); persist(); toast('Photo deleted'); back();
+    };
+  }
+
+  function showUsage() {
+    var el = document.getElementById('bk-usage');
+    if (!el || !navigator.storage || !navigator.storage.estimate) return;
+    var n = 0; db.pumpkins.forEach(function (p) { n += p.photos.length; });
+    navigator.storage.estimate().then(function (e) {
+      var mb = (e.usage || 0) / 1048576;
+      el.innerHTML = n + ' photo' + (n === 1 ? '' : 's') + ' \u00b7 about <b style="color:var(--white)">' +
+        (mb < 1 ? mb.toFixed(1) : Math.round(mb)) + ' MB</b> used on this phone' +
+        (e.quota ? ' (room for roughly ' + fmt(e.quota / 1048576 / 1024, 1) + ' GB)' : '') + '.';
+    }).catch(function () {});
   }
 
   db.pumpkins = db.pumpkins.map(normalize);
