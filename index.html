@@ -591,6 +591,26 @@ input[type=date].txt { min-width: 0; }
 .calc-kinds .chip { width: 100%; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
 
+/* Patches */
+.tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+.month-label { margin: 16px 2px 8px; font-size: 0.8rem; font-weight: 700; color: var(--grey); }
+.soil-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.soil-grid label { font-size: 0.9rem; margin-bottom: 6px; }
+.rot-row { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 11px var(--gap); border-bottom: 1px solid var(--panel-edge); font-size: 0.9rem; line-height: 1.4; }
+.rot-row:last-child { border-bottom: 0; }
+.rot-row b { color: var(--orange); }
+.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius); }
+.soil-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.soil-table th, .soil-table td { padding: 10px 10px; text-align: right; border-bottom: 1px solid var(--panel-edge); white-space: nowrap; }
+.soil-table th { color: var(--grey); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.soil-table th:first-child, .soil-table td:first-child { text-align: left; }
+.soil-table td small { display: block; color: var(--grey); font-size: 0.72rem; }
+.soil-table tr:last-child td { border-bottom: 0; }
+.soil-table tbody tr { cursor: pointer; }
+.also-box { margin-top: 14px; padding: 12px var(--gap); background: var(--panel); border: 1px solid var(--panel-edge); border-radius: var(--radius); }
+.also { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-weight: 600; }
+.also input { width: 22px; height: 22px; }
+
 </style>
 </head>
 
@@ -605,9 +625,10 @@ input[type=date].txt { min-width: 0; }
     </div>
   </header>
 
-  <nav class="tabs" aria-label="Sections">
+  <nav class="tabs three" aria-label="Sections">
     <button class="tab is-active" type="button" data-tab="calc">Calculator</button>
-    <button class="tab" type="button" data-tab="log">My Patch</button>
+    <button class="tab" type="button" data-tab="log">Fruit</button>
+    <button class="tab" type="button" data-tab="patch">Patch</button>
   </nav>
 
   <!-- Pumpkin log screens are drawn here by the ott-log script -->
@@ -1304,7 +1325,7 @@ window.OTT_TABLE_2025 = {
         if (d && Array.isArray(d.pumpkins)) return d;
       }
     } catch (e) { console.warn('[log] could not read saved data', e); }
-    return { version: 1, pumpkins: [] };
+    return { version: 1, pumpkins: [], patches: [], patchLog: [] };
   }
 
   function persist() {
@@ -1440,12 +1461,26 @@ window.OTT_TABLE_2025 = {
 
     if (name !== 'new' && name !== 'measure') pending = null;
     var isCalc = name === 'calc';
+    var PATCH_ROUTES = ['patches', 'patch', 'newpatch', 'editpatch', 'plog', 'soil'];
+    var tab = isCalc ? 'calc' : PATCH_ROUTES.indexOf(name) >= 0 ? 'patch' : 'log';
     view.calc.hidden = !isCalc;
     view.log.hidden = isCalc;
     Array.prototype.forEach.call(view.tabs, function (t) {
-      t.classList.toggle('is-active', (t.getAttribute('data-tab') === 'calc') === isCalc);
+      t.classList.toggle('is-active', t.getAttribute('data-tab') === tab);
     });
     if (isCalc) { refreshSavePanel(); return; }
+    if (tab === 'patch') {
+      var pt = id ? findPatch(id) : null;
+      if (name === 'patches') renderPatches();
+      else if (name === 'newpatch') renderPatchForm(null);
+      else if (!pt) { go('#patches'); return; }
+      else if (name === 'patch') renderPatchDetail(pt);
+      else if (name === 'editpatch') renderPatchForm(pt);
+      else if (name === 'plog') renderPatchEntryForm(pt, sub);
+      else if (name === 'soil') renderSoilForm(pt, sub);
+      window.scrollTo(0, 0);
+      return;
+    }
 
     var p = id && id !== 'new' ? find(id) : null;
     if (name === 'pumpkins') renderList();
@@ -1462,7 +1497,8 @@ window.OTT_TABLE_2025 = {
 
   Array.prototype.forEach.call(view.tabs, function (t) {
     t.addEventListener('click', function () {
-      go(t.getAttribute('data-tab') === 'calc' ? '#calc' : '#pumpkins');
+      var tt = t.getAttribute('data-tab');
+      go(tt === 'calc' ? '#calc' : tt === 'patch' ? '#patches' : '#pumpkins');
     });
   });
   window.addEventListener('hashchange', route);
@@ -1580,7 +1616,8 @@ window.OTT_TABLE_2025 = {
         '<h2 class="detail-name">' + esc(p.name) + '</h2>' +
         (cross(p) ? '<div class="pk-cross">' + esc(cross(p)) + '</div>' : '') +
         '<div class="pk-meta"><span class="badge is-kind">' + esc(k.label) + '</span><span class="badge is-' + p.status + '">' + statusLabel(p) + '</span><span>' + p.season + ' season</span>' +
-        (p.pollinationDate ? '<span>Pollinated <b>' + fmtDate(p.pollinationDate, true) + '</b></span>' : '') + '</div>' +
+        (p.pollinationDate ? '<span>Pollinated <b>' + fmtDate(p.pollinationDate, true) + '</b></span>' : '') +
+        (p.patchId && findPatch(p.patchId) ? '<span>Patch <b>' + esc(findPatch(p.patchId).name) + '</b></span>' : '') + '</div>' +
       '</div><button class="btn btn-small" id="edit">Edit</button></div>';
 
     // Stats
@@ -1654,6 +1691,8 @@ window.OTT_TABLE_2025 = {
       }).join('') + '</div>';
     }
 
+    html += patchPrepHtml(p);
+
     // Notes
     if (p.notes) html += '<div class="section-title">Notes</div><div class="notes-box">' + esc(p.notes) + '</div>';
 
@@ -1664,6 +1703,10 @@ window.OTT_TABLE_2025 = {
     view.log.querySelector('#add-c').onclick = function () { go('#care/' + p.id); };
     loadThumbs(view.log);
     view.log.querySelector('#add-ph').onclick = function () { view.log.querySelector('#ph-file').click(); };
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-open-patch]'), function (b) {
+      b.onclick = function () { go('#patch/' + b.getAttribute('data-open-patch')); };
+    });
+    wireEntryRows(view.log);
     view.log.querySelector('#ph-file').onchange = function (e) {
       var f = e.target.files && e.target.files[0];
       if (f) renderPhotoForm(p, f);
@@ -1811,6 +1854,11 @@ window.OTT_TABLE_2025 = {
         window.FRUIT.ORDER.map(function (k) {
           return '<option value="' + k + '"' + (v.kind === k ? ' selected' : '') + '>' + esc(window.FRUIT.KINDS[k].label) + '</option>';
         }).join('') + '</select><p class="hint" id="pf-kind-hint" style="margin:8px 0 0"></p></div>' +
+      (db.patches.length
+        ? '<div class="f"><label for="pf-patch">Patch</label><select class="sel" id="pf-patch"><option value="">No patch</option>' +
+          db.patches.map(function (pt) { return '<option value="' + esc(pt.id) + '"' + (v.patchId === pt.id ? ' selected' : '') + '>' + esc(pt.name) + '</option>'; }).join('') +
+          '</select></div>'
+        : '') +
       '<div class="f"><label for="pf-name">Name</label><input class="txt" id="pf-name" maxlength="60" placeholder="e.g. Big Girl" value="' + esc(v.name) + '"></div>' +
       '<div class="f f-grid"><div><label for="pf-season">Season</label><input class="txt" id="pf-season" type="number" inputmode="numeric" value="' + esc(v.season) + '"></div>' +
         '<div><label for="pf-poll">Pollinated</label><input class="txt" id="pf-poll" type="date" value="' + esc(v.pollinationDate) + '"></div></div>' +
@@ -1868,6 +1916,8 @@ window.OTT_TABLE_2025 = {
       target.status = $('pf-status').value;
       target.finalWeight = target.status === 'weighed' && fw > 0 ? fw : '';
       target.notes = $('pf-notes').value.trim();
+      if ($('pf-patch')) target.patchId = $('pf-patch').value;
+      else if (!target.patchId) target.patchId = '';
       if (recalc) target.measurements.forEach(function (m) {   // new chart -> re-estimate every entry
         var r = window.FRUIT.estimate(kind, m.circumference, m.sideToSide, m.endToEnd);
         m.lbs = r.ok ? r.lbs : null; m.value = m.lbs;
@@ -2145,7 +2195,7 @@ window.OTT_TABLE_2025 = {
   }
 
   function exportData() {
-    if (!db.pumpkins.length) { toast('Nothing to back up yet'); return; }
+    if (!db.pumpkins.length && !db.patches.length) { toast('Nothing to back up yet'); return; }
     var btn = document.getElementById('bk-export');
     if (btn) { btn.disabled = true; btn.textContent = 'Packing\u2026'; }
     var ids = [];
@@ -2161,8 +2211,8 @@ window.OTT_TABLE_2025 = {
       }).catch(function () { return null; });
     })).then(function (photos) {
       var payload = JSON.stringify({
-        app: 'giant-pumpkin-ott', version: 2, exportedAt: new Date().toISOString(),
-        pumpkins: db.pumpkins, photos: photos.filter(Boolean)
+        app: 'giant-pumpkin-ott', version: 3, exportedAt: new Date().toISOString(),
+        pumpkins: db.pumpkins, patches: db.patches, patchLog: db.patchLog, photos: photos.filter(Boolean)
       });
       var name = 'pumpkin-log-' + today() + '.json';
       var done = function () { localStorage.setItem(BACKUP_KEY, new Date().toISOString()); renderList(); };
@@ -2199,7 +2249,10 @@ window.OTT_TABLE_2025 = {
       if (!data || data.app !== 'giant-pumpkin-ott' || !Array.isArray(data.pumpkins)) { toast('That file isn\u2019t a pumpkin backup.'); return; }
       var incoming = data.pumpkins.filter(function (p) { return p && p.id && p.name; }).map(normalize);
       var photos = Array.isArray(data.photos) ? data.photos.filter(function (x) { return x && x.id && x.full; }) : [];
+      var inPatches = Array.isArray(data.patches) ? data.patches.filter(function (x) { return x && x.id && x.name; }) : [];
+      var inLog = Array.isArray(data.patchLog) ? data.patchLog.filter(function (x) { return x && x.id && x.patchId && x.date; }) : [];
       if (!confirm('Restore ' + incoming.length + ' entr' + (incoming.length === 1 ? 'y' : 'ies') +
+          (inPatches.length ? ', ' + inPatches.length + ' patch' + (inPatches.length === 1 ? '' : 'es') + ' (' + inLog.length + ' log entries)' : '') +
           (photos.length ? ' and ' + photos.length + ' photo' + (photos.length === 1 ? '' : 's') : '') + ' from ' +
           (data.exportedAt ? fmtDate(data.exportedAt.slice(0, 10), true) : 'this backup') +
           '?\n\nEntries that are both in the backup and on this phone are replaced with the backup\u2019s version. Everything else is kept.')) return;
@@ -2216,10 +2269,22 @@ window.OTT_TABLE_2025 = {
           db.pumpkins.forEach(function (x, j) { if (x.id === p.id) i = j; });
           if (i >= 0) db.pumpkins[i] = p; else db.pumpkins.push(p);
         });
+        [[inPatches, 'patches'], [inLog, 'patchLog']].forEach(function (pair) {
+          pair[0].forEach(function (x) {
+            var arr = db[pair[1]], i = -1;
+            arr.forEach(function (y, j) { if (y.id === x.id) i = j; });
+            if (i >= 0) arr[i] = x; else arr.push(x);
+          });
+        });
         if (persist()) { toast('Restored ' + incoming.length + ' entr' + (incoming.length === 1 ? 'y' : 'ies')); renderList(); }
       }).catch(function () { toast('Not enough space on this phone to restore the photos.'); });
     };
     reader.readAsText(file);
+  }
+
+  function normalizeDb() {
+    if (!Array.isArray(db.patches)) db.patches = [];
+    if (!Array.isArray(db.patchLog)) db.patchLog = [];
   }
 
   function normalize(p) {
@@ -2228,6 +2293,7 @@ window.OTT_TABLE_2025 = {
     p.photos = (Array.isArray(p.photos) ? p.photos : []).filter(function (x) { return x && x.id; });
     p.season = +p.season || new Date().getFullYear();
     if (!window.FRUIT.KINDS[p.kind]) p.kind = 'pumpkin';
+    if (typeof p.patchId !== 'string') p.patchId = '';
     p.measurements.forEach(function (m) {
       if (m.value === undefined) m.value = typeof m.lbs === 'number' ? m.lbs : null;
     });
@@ -2416,6 +2482,396 @@ window.OTT_TABLE_2025 = {
     }).catch(function () {});
   }
 
+  /* ------------------------------ PATCHES & OFF-SEASON LOG ---------------- */
+  /* db.patches:  [ { id, name, notes, createdAt } ]
+     db.patchLog: [ { id, patchId, date, type, product, amount, note,
+                      soil: { ph, om, p, k, ca, mg, cec } (soil tests only) } ]
+     A fruit points at its patch with fruit.patchId.                          */
+
+  var PATCH_TYPES = [
+    'Compost / manure', 'Fertilizer / amendment', 'Lime / sulfur', 'Cover crop planted',
+    'Cover crop turned under', 'Tilling / soil work', 'Mulch / covering', 'Other'
+  ];
+  var SOIL_FIELDS = [
+    ['ph', 'pH', ''], ['om', 'Organic matter', '%'], ['p', 'Phosphorus (P)', 'ppm'],
+    ['k', 'Potassium (K)', 'ppm'], ['ca', 'Calcium (Ca)', 'ppm'], ['mg', 'Magnesium (Mg)', 'ppm'],
+    ['cec', 'CEC', 'meq/100g']
+  ];
+  var patchFilter = null;
+  var soilMetric = 'ph';
+
+  function findPatch(id) {
+    for (var i = 0; i < db.patches.length; i++) if (db.patches[i].id === id) return db.patches[i];
+    return null;
+  }
+  function findEntry(id) {
+    for (var i = 0; i < db.patchLog.length; i++) if (db.patchLog[i].id === id) return db.patchLog[i];
+    return null;
+  }
+  function entriesFor(patchId) {
+    return db.patchLog.filter(function (e) { return e.patchId === patchId; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+  }
+  function soilSummary(s) {
+    return SOIL_FIELDS.filter(function (f) { return typeof s[f[0]] === 'number'; })
+      .map(function (f) { return (f[0] === 'ph' ? 'pH ' : f[1].replace(/ \(.*\)/, '') + ' ') + fmt(s[f[0]], 2) + (f[2] && f[2] !== 'meq/100g' ? f[2] === '%' ? '%' : ' ' + f[2] : ''); })
+      .join(' \u00b7 ');
+  }
+  function entryRow(e, showPatch) {
+    var isSoil = e.type === 'Soil test';
+    var main = isSoil ? 'Soil test' : ([e.product, e.amount].filter(Boolean).join(' \u00b7 ') || e.type);
+    var pt = showPatch ? findPatch(e.patchId) : null;
+    var sub = (isSoil ? soilSummary(e.soil || {}) : '<span class="care-type">' + esc(e.type) + '</span>') +
+      (pt ? ' \u00b7 ' + esc(pt.name) : '') + (e.note ? ' \u2014 ' + esc(e.note) : '');
+    return '<button class="row" data-pe="' + esc(e.id) + '">' +
+      '<span class="row-main">' + esc(main) + '</span>' +
+      '<span class="row-right" style="color:var(--grey);font-weight:600">' + fmtDate(e.date, true) + '</span>' +
+      '<span class="row-sub">' + sub + '</span></button>';
+  }
+  function wireEntryRows(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-pe]'), function (b) {
+      b.onclick = function () {
+        var e = findEntry(b.getAttribute('data-pe'));
+        if (e) go((e.type === 'Soil test' ? '#soil/' : '#plog/') + e.patchId + '/' + e.id);
+      };
+    });
+  }
+  function monthLabel(d) { var a = d.split('-'); return MONTHS[+a[1] - 1] + ' ' + a[0]; }
+
+  /* ---- Patch tab: patches + the whole year-round log --------------------- */
+  function renderPatches() {
+    var html = '<div class="btn-row" style="margin-top:0"><button class="btn btn-primary" id="pl-add">+ Log patch work</button>' +
+      '<button class="btn" id="pt-new">+ New patch</button></div>';
+
+    if (!db.patches.length) {
+      html += '<div class="empty" style="margin-top:14px">Name your growing areas \u2013 \u201cNorth patch\u201d, \u201cHoop house\u201d \u2013 then log compost, amendments, cover crops and soil tests year round.' +
+        '<br><br>When you add a fruit, you can pick which patch it\u2019s growing in.</div>';
+      view.log.innerHTML = html;
+      document.getElementById('pt-new').onclick = function () { go('#newpatch'); };
+      document.getElementById('pl-add').onclick = function () { go('#newpatch'); };
+      return;
+    }
+
+    html += '<div class="section-title">Patches</div><div class="list">' + db.patches.map(function (pt) {
+      var n = entriesFor(pt.id).length;
+      var fruit = db.pumpkins.filter(function (p) { return p.patchId === pt.id; });
+      var cur = fruit.filter(function (p) { return p.status === 'growing'; });
+      var last = entriesFor(pt.id)[0];
+      return '<button class="row" data-pt="' + esc(pt.id) + '">' +
+        '<span class="row-main">' + esc(pt.name) + '</span>' +
+        '<span class="row-right" style="color:var(--grey);font-weight:600">' + n + ' entr' + (n === 1 ? 'y' : 'ies') + '</span>' +
+        '<span class="row-sub">' + (cur.length ? 'Growing: ' + cur.map(function (p) { return esc(p.name); }).join(', ') :
+          fruit.length ? fruit.length + ' fruit logged here' : 'No fruit assigned yet') +
+        (last ? ' \u00b7 last work ' + fmtDate(last.date, true) : '') + '</span></button>';
+    }).join('') + '</div>';
+
+    html += soilCompareHtml();
+
+    var log = db.patchLog.filter(function (e) { return patchFilter === null || e.patchId === patchFilter; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+    html += '<div class="section-title">Patch log</div>';
+    if (db.patches.length > 1) {
+      html += '<div class="chips"><button class="chip' + (patchFilter === null ? ' is-active' : '') + '" data-pf="">All patches</button>' +
+        db.patches.map(function (pt) {
+          return '<button class="chip' + (patchFilter === pt.id ? ' is-active' : '') + '" data-pf="' + esc(pt.id) + '">' + esc(pt.name) + '</button>';
+        }).join('') + '</div>';
+    }
+    if (!log.length) html += '<div class="list"><div class="empty">Nothing logged yet. Tap <b>+ Log patch work</b>.</div></div>';
+    var month = null, open = false;
+    log.forEach(function (e) {
+      var m = monthLabel(e.date);
+      if (m !== month) {
+        if (open) html += '</div>';
+        html += '<div class="month-label">' + m + '</div><div class="list">'; open = true; month = m;
+      }
+      html += entryRow(e, db.patches.length > 1 && patchFilter === null);
+    });
+    if (open) html += '</div>';
+
+    view.log.innerHTML = html;
+    document.getElementById('pt-new').onclick = function () { go('#newpatch'); };
+    document.getElementById('pl-add').onclick = function () {
+      go('#plog/' + (patchFilter || db.patches[0].id));
+    };
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-pt]'), function (b) {
+      b.onclick = function () { go('#patch/' + b.getAttribute('data-pt')); };
+    });
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-pf]'), function (b) {
+      b.onclick = function () { var v = b.getAttribute('data-pf'); patchFilter = v || null; renderPatches(); };
+    });
+    wireEntryRows(view.log);
+  }
+
+  /* ---- One patch -------------------------------------------------------- */
+  function renderPatchDetail(pt) {
+    var log = entriesFor(pt.id);
+    var tests = log.filter(function (e) { return e.type === 'Soil test'; }).slice().reverse();
+    var fruit = db.pumpkins.filter(function (p) { return p.patchId === pt.id; })
+      .sort(function (a, b) { return b.season - a.season; });
+
+    var html = '<button class="link-btn back" id="back">\u2039 All patches</button>' +
+      '<div class="detail-head"><div><h2 class="detail-name">' + esc(pt.name) + '</h2>' +
+      (pt.notes ? '<div class="pk-cross" style="white-space:pre-wrap">' + esc(pt.notes) + '</div>' : '') +
+      '</div><button class="btn btn-small" id="edit">Edit</button></div>' +
+      '<div class="btn-row"><button class="btn btn-primary" id="add-e">+ Log work</button><button class="btn" id="add-s">+ Soil test</button></div>';
+
+    // Soil test chart
+    if (tests.length) {
+      var have = SOIL_FIELDS.filter(function (f) { return tests.some(function (t) { return typeof (t.soil || {})[f[0]] === 'number'; }); });
+      if (!have.some(function (f) { return f[0] === soilMetric; }) && have.length) soilMetric = have[0][0];
+      html += '<div class="section-title">Soil tests</div><div class="chart-card"><div class="chart-toggle chips" style="margin-bottom:6px">' +
+        have.map(function (f) {
+          return '<button class="chip' + (soilMetric === f[0] ? ' is-active' : '') + '" data-sm="' + f[0] + '">' + f[1].replace(/ \(.*\)/, '') + '</button>';
+        }).join('') + '</div><div class="chart">' + soilChart(tests, soilMetric) + '</div></div>';
+    }
+
+    html += rotationHtml(pt);
+
+    // Fruit grown here
+    html += '<div class="section-title">Fruit grown here</div>';
+    html += fruit.length ? '<div class="list">' + fruit.map(function (p) {
+      var lv = latestVal(p);
+      return '<button class="row" data-fr="' + esc(p.id) + '"><span class="row-main">' + esc(p.name) + '</span>' +
+        '<span class="row-right">' + (p.status === 'weighed' && p.finalWeight ? fmt(p.finalWeight, dpOf(p)) + ' ' + unitOf(p)
+          : lv ? fmt(lv.value, dpOf(p)) + ' ' + unitOf(p) : '') + '</span>' +
+        '<span class="row-sub">' + esc(kindOf(p).label) + ' \u00b7 ' + p.season + ' \u00b7 ' + statusLabel(p) + '</span></button>';
+    }).join('') + '</div>'
+      : '<div class="list"><div class="empty">Assign fruit to this patch from the fruit\u2019s Edit screen.</div></div>';
+
+    // Log
+    html += '<div class="section-title">Work log</div>';
+    html += log.length ? '<div class="list">' + log.map(function (e) { return entryRow(e, false); }).join('') + '</div>'
+      : '<div class="list"><div class="empty">Log compost, amendments, cover crops and tilling here \u2013 any time of year.</div></div>';
+
+    view.log.innerHTML = html;
+    var $ = function (id) { return document.getElementById(id); };
+    $('back').onclick = function () { go('#patches'); };
+    $('edit').onclick = function () { go('#editpatch/' + pt.id); };
+    $('add-e').onclick = function () { go('#plog/' + pt.id); };
+    $('add-s').onclick = function () { go('#soil/' + pt.id); };
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-sm]'), function (b) {
+      b.onclick = function () { soilMetric = b.getAttribute('data-sm'); renderPatchDetail(pt); };
+    });
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-fr]'), function (b) {
+      b.onclick = function () { go('#pumpkin/' + b.getAttribute('data-fr')); };
+    });
+    wireEntryRows(view.log);
+  }
+
+  function soilChart(tests, key) {
+    var pts = tests.filter(function (t) { return typeof (t.soil || {})[key] === 'number'; });
+    if (!pts.length) return '<div class="empty">No values for this yet.</div>';
+    var vals = pts.map(function (t) { return t.soil[key]; });
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if (hi - lo < 1e-9) { lo = lo * 0.9; hi = hi * 1.1 || 1; }
+    var pad = (hi - lo) * 0.15; lo = Math.max(0, lo - pad); hi = hi + pad;
+    var ax = axis(lo, hi);
+    var xs = pts.map(function (t) { return dayNum(t.date); });
+    var f = frame(xs, ax, function (v) { return fmt(v, ax.step < 1 ? 1 : 0); });
+    var line = pts.map(function (t) { return f.sx(dayNum(t.date)).toFixed(1) + ',' + f.sy(t.soil[key]).toFixed(1); });
+    var inner = f.grid +
+      (pts.length > 1 ? '<polyline points="' + line.join(' ') + '" fill="none" stroke="#3fa9b5" stroke-width="2.5" stroke-linejoin="round"/>' : '') +
+      pts.map(function (t) {
+        return '<circle cx="' + f.sx(dayNum(t.date)) + '" cy="' + f.sy(t.soil[key]) + '" r="4" fill="#3fa9b5"><title>' +
+          fmtDate(t.date, true) + ': ' + fmt(t.soil[key], 2) + '</title></circle>';
+      }).join('');
+    return svgWrap(inner) + (pts.length === 1 ? '<div class="muted" style="margin:6px 6px 0">Add another soil test to see the trend.</div>' : '');
+  }
+
+  /* ---- Patch form ------------------------------------------------------- */
+  function renderPatchForm(pt) {
+    var isNew = !pt;
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 ' + (isNew ? 'All patches' : esc(pt.name)) + '</button>' +
+      '<h2 class="form-title">' + (isNew ? 'New patch' : 'Edit patch') + '</h2>' +
+      '<div class="card">' +
+      '<div class="f"><label for="pt-name">Name</label><input class="txt" id="pt-name" maxlength="60" placeholder="e.g. North patch" value="' + esc(pt ? pt.name : '') + '"></div>' +
+      '<div class="f"><label for="pt-notes">Notes</label><textarea class="area" id="pt-notes" placeholder="Size, soil type, irrigation, anything worth remembering">' + esc(pt ? pt.notes : '') + '</textarea></div>' +
+      '</div><div class="form-error" id="pt-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save</button></div>' +
+      (isNew ? '' : '<button class="btn btn-danger" id="del" style="margin-top:22px">Delete patch</button>');
+    var $ = function (id) { return document.getElementById(id); };
+    var back = function () { location.replace(pt ? '#patch/' + pt.id : '#patches'); };
+    $('back').onclick = back; $('cancel').onclick = back;
+    $('save').onclick = function () {
+      var name = $('pt-name').value.trim();
+      if (!name) return showErr('pt-err', 'Give the patch a name.');
+      var t = pt || { id: uid('pt'), createdAt: new Date().toISOString() };
+      t.name = name; t.notes = $('pt-notes').value.trim();
+      if (isNew) db.patches.push(t);
+      if (!persist()) return;
+      toast(isNew ? 'Patch added' : 'Saved');
+      location.replace('#patch/' + t.id);
+    };
+    if (!isNew) $('del').onclick = function () {
+      var n = entriesFor(pt.id).length;
+      if (!confirm('Delete \u201c' + pt.name + '\u201d' + (n ? ' and its ' + n + ' log entr' + (n === 1 ? 'y' : 'ies') : '') +
+          '? Fruit assigned to it are kept, just unassigned. This can\u2019t be undone.')) return;
+      db.patchLog = db.patchLog.filter(function (e) { return e.patchId !== pt.id; });
+      db.pumpkins.forEach(function (p) { if (p.patchId === pt.id) p.patchId = ''; });
+      db.patches = db.patches.filter(function (x) { return x.id !== pt.id; });
+      if (patchFilter === pt.id) patchFilter = null;
+      persist(); toast('Patch deleted'); location.replace('#patches');
+    };
+  }
+
+  function patchSelect(id, selected) {
+    return '<select class="sel" id="' + id + '">' + db.patches.map(function (pt) {
+      return '<option value="' + esc(pt.id) + '"' + (pt.id === selected ? ' selected' : '') + '>' + esc(pt.name) + '</option>';
+    }).join('') + '</select>';
+  }
+
+  /* ---- Work entry form -------------------------------------------------- */
+  function renderPatchEntryForm(pt, eid) {
+    var existing = eid ? findEntry(eid) : null;
+    var v = existing || { date: today(), type: PATCH_TYPES[0], product: '', amount: '', note: '' };
+    var seen = {};
+    db.patchLog.forEach(function (e) { if (e.product) seen[e.product] = 1; });
+    db.pumpkins.forEach(function (x) { x.careLog.forEach(function (c) { if (c.product) seen[c.product] = 1; }); });
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 ' + esc(pt.name) + '</button>' +
+      '<h2 class="form-title">' + (existing ? 'Edit patch work' : 'Log patch work') + '</h2>' +
+      '<div class="card">' +
+      (db.patches.length > 1 ? '<div class="f"><label for="pe-patch">Patch</label>' + patchSelect('pe-patch', pt.id) + '</div>' : '') +
+      '<div class="f f-grid"><div><label for="pe-date">Date</label><input class="txt" id="pe-date" type="date" value="' + esc(v.date) + '"></div>' +
+        '<div><label for="pe-type">Type</label><select class="sel" id="pe-type">' +
+        PATCH_TYPES.map(function (t) { return '<option' + (t === v.type ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') +
+        '</select></div></div>' +
+      '<div class="f"><label for="pe-product">Product / material</label><p class="hint">e.g. leaf compost, aged horse manure, winter rye, gypsum</p>' +
+        '<input class="txt" id="pe-product" list="pe-products" maxlength="80" value="' + esc(v.product) + '">' +
+        '<datalist id="pe-products">' + Object.keys(seen).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="f"><label for="pe-amount">Amount / rate</label><p class="hint">e.g. 6 yards, 3 lbs per 1,000 sq ft, 2 lbs seed</p><input class="txt" id="pe-amount" maxlength="80" value="' + esc(v.amount) + '"></div>' +
+      '<div class="f"><label for="pe-note">Notes</label><textarea class="area" id="pe-note" placeholder="How it was applied, where, what you noticed">' + esc(v.note) + '</textarea></div>' +
+      '</div>' +
+      (!existing && db.patches.length > 1 ? '<div class="also-box"><div class="muted" style="margin-bottom:6px">Also log the same work in:</div>' +
+        db.patches.map(function (x) {
+          return '<label class="also"><input type="checkbox" data-also="' + esc(x.id) + '"> ' + esc(x.name) + '</label>';
+        }).join('') + '</div>' : '') +
+      '<div class="form-error" id="pe-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save</button></div>' +
+      (existing ? '<button class="btn btn-danger" id="del" style="margin-top:22px">Delete entry</button>' : '');
+    wireEntrySave(pt, existing, function ($) {
+      var f = { date: $('pe-date').value, type: $('pe-type').value, product: $('pe-product').value.trim(),
+                amount: $('pe-amount').value.trim(), note: $('pe-note').value.trim() };
+      if (!f.product && !f.note) return 'Add a product or a note.';
+      return f;
+    }, 'pe');
+  }
+
+  /* ---- Soil test form --------------------------------------------------- */
+  function renderSoilForm(pt, eid) {
+    var existing = eid ? findEntry(eid) : null;
+    var v = existing || { date: today(), note: '', soil: {}, product: '' };
+    var s = v.soil || {};
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 ' + esc(pt.name) + '</button>' +
+      '<h2 class="form-title">' + (existing ? 'Edit soil test' : 'Soil test') + '</h2>' +
+      '<div class="card">' +
+      (db.patches.length > 1 ? '<div class="f"><label for="st-patch">Patch</label>' + patchSelect('st-patch', pt.id) + '</div>' : '') +
+      '<div class="f f-grid"><div><label for="st-date">Date sampled</label><input class="txt" id="st-date" type="date" value="' + esc(v.date) + '"></div>' +
+        '<div><label for="st-lab">Lab</label><input class="txt" id="st-lab" maxlength="60" placeholder="optional" value="' + esc(v.product) + '"></div></div>' +
+      '<p class="hint" style="margin:12px 0 0">Fill in whatever your report shows \u2013 blanks are fine.</p>' +
+      '<div class="f soil-grid">' + SOIL_FIELDS.map(function (f) {
+        return '<div><label for="st-' + f[0] + '">' + f[1] + (f[2] ? ' <span class="muted">' + f[2] + '</span>' : '') + '</label>' +
+          '<input class="txt" id="st-' + f[0] + '" type="number" inputmode="decimal" step="any" min="0" value="' +
+          (typeof s[f[0]] === 'number' ? s[f[0]] : '') + '"></div>';
+      }).join('') + '</div>' +
+      '<div class="f"><label for="st-note">Notes</label><textarea class="area" id="st-note" placeholder="Recommendations from the report, other values">' + esc(v.note) + '</textarea></div>' +
+      '</div><div class="form-error" id="st-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save</button></div>' +
+      (existing ? '<button class="btn btn-danger" id="del" style="margin-top:22px">Delete soil test</button>' : '');
+    wireEntrySave(pt, existing, function ($) {
+      var soil = {}, any = false;
+      SOIL_FIELDS.forEach(function (f) {
+        var n = window.OTT.clean($('st-' + f[0]).value);
+        if (n !== null && n >= 0) { soil[f[0]] = n; any = true; }
+      });
+      if (!any) return 'Enter at least one value from the report.';
+      if (typeof soil.ph === 'number' && soil.ph > 14) return 'pH should be between 0 and 14.';
+      return { date: $('st-date').value, type: 'Soil test', product: $('st-lab').value.trim(), amount: '',
+               note: $('st-note').value.trim(), soil: soil };
+    }, 'st');
+  }
+
+  function wireEntrySave(pt, existing, read, pre) {
+    var $ = function (id) { return document.getElementById(id); };
+    var back = function () { location.replace('#patch/' + pt.id); };
+    $('back').onclick = back; $('cancel').onclick = back;
+    $('save').onclick = function () {
+      if (!dayNum($(pre + '-date').value)) return showErr(pre + '-err', 'Pick a date.');
+      var f = read($);
+      if (typeof f === 'string') return showErr(pre + '-err', f);
+      var target = existing || { id: uid('pe') };
+      for (var k in f) target[k] = f[k];
+      target.patchId = $(pre + '-patch') ? $(pre + '-patch').value : pt.id;
+      if (!existing) db.patchLog.push(target);
+      var extra = 0;
+      if (!existing) Array.prototype.forEach.call(document.querySelectorAll('[data-also]:checked'), function (c) {
+        var pid = c.getAttribute('data-also');
+        if (pid === target.patchId) return;
+        var copy = { id: uid('pe') }; for (var k2 in f) copy[k2] = f[k2]; copy.patchId = pid;
+        db.patchLog.push(copy); extra++;
+      });
+      if (!persist()) return;
+      toast(extra ? 'Logged in ' + (extra + 1) + ' patches' : 'Saved');
+      location.replace('#patch/' + target.patchId);
+    };
+    if (existing) $('del').onclick = function () {
+      if (!confirm('Delete this entry?')) return;
+      db.patchLog = db.patchLog.filter(function (e) { return e.id !== existing.id; });
+      persist(); toast('Entry deleted'); back();
+    };
+  }
+
+  /* ---- On a fruit's page: the ground work that led up to its season ----- */
+  function patchPrepHtml(p) {
+    var pt = p.patchId ? findPatch(p.patchId) : null;
+    if (!pt) return '';
+    var from = (p.season - 1) + '-08-01', to = p.season + '-12-31';
+    var list = entriesFor(pt.id).filter(function (e) { return e.date >= from && e.date <= to; });
+    return '<div class="section-title">Patch work \u00b7 ' + esc(pt.name) + '<button class="link-btn" data-open-patch="' + esc(pt.id) + '">Open patch \u203a</button></div>' +
+      (list.length ? '<div class="list">' + list.map(function (e) { return entryRow(e, false); }).join('') + '</div>'
+        : '<div class="list"><div class="empty">No patch work logged from fall ' + (p.season - 1) + ' through the ' + p.season + ' season.</div></div>');
+  }
+
+  /* ---- Rotation: what grew in each patch, season by season -------------- */
+  function rotationHtml(pt) {
+    var fruit = db.pumpkins.filter(function (p) { return p.patchId === pt.id; });
+    var years = {};
+    fruit.forEach(function (p) { (years[p.season] = years[p.season] || []).push(p); });
+    db.patchLog.forEach(function (e) { if (e.patchId === pt.id) { var y = +e.date.slice(0, 4); if (!years[y]) years[y] = []; } });
+    var ys = Object.keys(years).map(Number);
+    if (!ys.length) return '';
+    var lo = Math.min.apply(null, ys), hi = Math.max(Math.max.apply(null, ys), new Date().getFullYear());
+    var rows = '';
+    for (var y = hi; y >= lo; y--) {
+      var f = years[y] || [];
+      var kinds = [];
+      f.forEach(function (p) { if (kinds.indexOf(kindOf(p).label) < 0) kinds.push(kindOf(p).label); });
+      rows += '<div class="rot-row"><b>' + y + '</b><span>' +
+        (f.length ? esc(kinds.join(', ')) + ' <span class="muted">\u00b7 ' + f.map(function (p) { return esc(p.name); }).join(', ') + '</span>'
+                  : '<span class="muted">Nothing grown \u2013 rested / cover crop</span>') + '</span></div>';
+    }
+    return '<div class="section-title">Rotation history</div><div class="list rot">' + rows + '</div>';
+  }
+
+  /* ---- Latest soil test of every patch, side by side -------------------- */
+  function soilCompareHtml() {
+    var latest = db.patches.map(function (pt) {
+      var t = entriesFor(pt.id).filter(function (e) { return e.type === 'Soil test'; })[0];
+      return { pt: pt, t: t };
+    }).filter(function (x) { return x.t; });
+    if (latest.length < 2) return '';
+    var cols = SOIL_FIELDS.filter(function (f) { return latest.some(function (x) { return typeof x.t.soil[f[0]] === 'number'; }); });
+    return '<div class="section-title">Latest soil tests</div><div class="table-wrap"><table class="soil-table"><thead><tr><th>Patch</th>' +
+      cols.map(function (f) { return '<th>' + (f[0] === 'ph' ? 'pH' : f[0] === 'om' ? 'OM %' : f[0].toUpperCase()) + '</th>'; }).join('') +
+      '</tr></thead><tbody>' + latest.map(function (x) {
+        return '<tr data-pt="' + esc(x.pt.id) + '"><td><b>' + esc(x.pt.name) + '</b><small>' + fmtDate(x.t.date, true) + '</small></td>' +
+          cols.map(function (f) { var v = x.t.soil[f[0]]; return '<td>' + (typeof v === 'number' ? fmt(v, 2) : '\u2013') + '</td>'; }).join('') + '</tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  normalizeDb();
   db.pumpkins = db.pumpkins.map(normalize);
   route();
 })();
