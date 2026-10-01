@@ -611,6 +611,64 @@ input[type=date].txt { min-width: 0; }
 .also { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-weight: 600; }
 .also input { width: 22px; height: 22px; }
 
+/* Weigh-off */
+.wo-card { padding: 14px var(--gap); }
+.wo-weight { font-size: 1.8rem; font-weight: 800; color: var(--orange); display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; }
+.wo-weight small { font-size: 0.85rem; color: var(--grey); }
+.wo-heavy { font-size: 0.85rem; font-weight: 700; padding: 3px 9px; border-radius: 10px; }
+.wo-heavy.up { background: #10261a; color: #6fd39a; }
+.wo-heavy.down { background: #2a1210; color: var(--red); }
+
+/* Batch entry */
+.b-card { margin-top: 12px; padding: 14px var(--gap); }
+.b-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.b-in { min-height: 52px; padding: 0 8px; min-width: 0; }
+.b-in input { font-size: 1.05rem; width: 100%; min-width: 0; }
+.b-grid .b-in .unit { font-size: 0.75rem; margin-left: 2px; }
+.b-live { margin-top: 8px; min-height: 1em; }
+.b-live b { color: var(--orange); }
+
+/* Feed calculator */
+.fc-big { font-size: 2.4rem; font-weight: 800; color: var(--orange); margin: 4px 0 2px; }
+.fc-tank { margin-top: 14px; font-size: 1.3rem; font-weight: 800; }
+
+/* Season report: light page for printing */
+.report { margin-top: 14px; padding: 22px 20px; background: #fff; color: #1a1a1a; border-radius: var(--radius); font-size: 0.9rem; line-height: 1.45; }
+.report header { display: flex; justify-content: space-between; gap: 12px; border-bottom: 3px solid #f79646; padding-bottom: 12px; margin-bottom: 14px; }
+.report h1 { margin: 2px 0 0; font-size: 1.7rem; line-height: 1.1; }
+.report h2 { margin: 20px 0 8px; font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; color: #b85812; }
+.r-kicker { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #b85812; }
+.r-cross { color: #555; margin-top: 3px; }
+.r-logo { width: 56px; height: 56px; border-radius: 12px; }
+.r-cols { display: grid; grid-template-columns: 1fr; gap: 0 20px; }
+@media (min-width: 560px) { .r-cols { grid-template-columns: 1fr 1fr; } }
+.r-facts { width: 100%; border-collapse: collapse; }
+.r-facts th { text-align: left; font-weight: 600; color: #666; padding: 4px 10px 4px 0; width: 42%; vertical-align: top; }
+.r-facts td { padding: 4px 0; font-weight: 700; }
+.r-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.r-table th, .r-table td { text-align: left; padding: 6px 6px; border-bottom: 1px solid #e3e3e3; vertical-align: top; }
+.r-table th { font-size: 0.72rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+.r-note { color: #666; font-size: 0.78rem; }
+.r-chart { background: #111; border-radius: 10px; padding: 8px; }
+.r-chart .muted { color: #bbb; }
+.r-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.r-photos figure { margin: 0; }
+.r-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px; background: #eee; }
+.r-photos figcaption { font-size: 0.72rem; color: #666; margin-top: 2px; }
+.r-notes { white-space: pre-wrap; }
+.report footer { margin-top: 22px; padding-top: 10px; border-top: 1px solid #e3e3e3; font-size: 0.72rem; color: #888; }
+body.is-report .vine-divider, body.is-report .footer { display: none; }
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff !important; color: #000 !important; padding: 0 !important; }
+  .app > *:not(#view-log), .toast, .no-print { display: none !important; }
+  .app { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+  #view-log { display: block !important; }
+  .report { margin: 0; padding: 0; border-radius: 0; }
+  .report h2, .r-table tr, .r-photos figure, .r-chart { break-inside: avoid; }
+  .r-chart { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
 </style>
 </head>
 
@@ -1461,7 +1519,7 @@ window.OTT_TABLE_2025 = {
 
     if (name !== 'new' && name !== 'measure') pending = null;
     var isCalc = name === 'calc';
-    var PATCH_ROUTES = ['patches', 'patch', 'newpatch', 'editpatch', 'plog', 'soil'];
+    var PATCH_ROUTES = ['patches', 'patch', 'newpatch', 'editpatch', 'plog', 'soil', 'feed'];
     var tab = isCalc ? 'calc' : PATCH_ROUTES.indexOf(name) >= 0 ? 'patch' : 'log';
     view.calc.hidden = !isCalc;
     view.log.hidden = isCalc;
@@ -1471,6 +1529,7 @@ window.OTT_TABLE_2025 = {
     if (isCalc) { refreshSavePanel(); return; }
     if (tab === 'patch') {
       var pt = id ? findPatch(id) : null;
+      if (name === 'feed') { renderFeedCalc(); window.scrollTo(0, 0); return; }
       if (name === 'patches') renderPatches();
       else if (name === 'newpatch') renderPatchForm(null);
       else if (!pt) { go('#patches'); return; }
@@ -1482,6 +1541,7 @@ window.OTT_TABLE_2025 = {
       return;
     }
 
+    if (name === 'batch') { renderBatch(); window.scrollTo(0, 0); return; }
     var p = id && id !== 'new' ? find(id) : null;
     if (name === 'pumpkins') renderList();
     else if (name === 'new') renderPumpkinForm(null);
@@ -1491,6 +1551,7 @@ window.OTT_TABLE_2025 = {
     else if (name === 'measure') renderMeasureForm(p, sub);
     else if (name === 'care') renderCareForm(p, sub);
     else if (name === 'photo') renderPhotoViewer(p, sub);
+    else if (name === 'report') renderReport(p);
     else renderList();
     window.scrollTo(0, 0);
   }
@@ -1526,7 +1587,10 @@ window.OTT_TABLE_2025 = {
       return (lb ? lb.value : -1) - (la ? la.value : -1);
     });
 
-    var html = '<button class="btn btn-primary" id="add-pumpkin">+ Add fruit</button>';
+    var anyGrowing = db.pumpkins.some(function (p) { return p.status === 'growing'; });
+    var html = anyGrowing
+      ? '<div class="btn-row" style="margin-top:0"><button class="btn btn-primary" id="add-pumpkin">+ Add fruit</button><button class="btn" id="batch">Measure all</button></div>'
+      : '<button class="btn btn-primary" id="add-pumpkin">+ Add fruit</button>';
 
     if (seasons.length > 1) {
       html += '<div class="chips" style="margin-top:14px">' +
@@ -1582,6 +1646,7 @@ window.OTT_TABLE_2025 = {
     loadThumbs(view.log);
 
     view.log.querySelector('#add-pumpkin').onclick = function () { go('#new'); };
+    if (view.log.querySelector('#batch')) view.log.querySelector('#batch').onclick = function () { go('#batch'); };
     Array.prototype.forEach.call(view.log.querySelectorAll('.pk-card'), function (b) {
       b.onclick = function () { go('#pumpkin/' + b.getAttribute('data-id')); };
     });
@@ -1630,12 +1695,14 @@ window.OTT_TABLE_2025 = {
       stat('Days after pollination', d !== null && d >= 0 ? d : '\u2014', p.pollinationDate ? (p.status === 'growing' ? 'as of today' : 'at last measurement') : 'Add a pollination date') +
       (p.status === 'weighed' && p.finalWeight
         ? stat(k.method === 'length' ? 'Official length' : 'Scale weight', fmt(p.finalWeight, dp) + ' <small>' + u + '</small>',
-               lv && k.method === 'ott' ? heavyLight(p.finalWeight, lv.value) : '')
+               heavyText(heavyInfo(p)))
         : stat('Measurements', m.length, p.careLog.length + ' care entr' + (p.careLog.length === 1 ? 'y' : 'ies'))) +
       '</div>';
 
     html += '<div class="btn-row"><button class="btn btn-primary" id="add-m">+ Measure</button>' +
             '<button class="btn" id="add-c">+ Care / nutrient</button></div>';
+
+    html += weighoffHtml(p);
 
     // Chart
     html += '<div class="chart-card"><div class="chart-toggle">' +
@@ -1644,6 +1711,8 @@ window.OTT_TABLE_2025 = {
       '</div><div class="chart">' + (chartMode === 'weight' ? weightChart(p) : gainChart(p)) + '</div>' +
       (p.careLog.length ? '<div class="chart-legend"><span><i style="background:var(--orange)"></i>' + (k.method === 'ott' ? 'Estimate' : k.method === 'length' ? 'Length' : 'Weight') + '</span><span><i style="background:#3fa9b5"></i>Care / nutrient entry</span></div>' : '') +
       '</div>';
+
+    html += '<div class="btn-row"><button class="btn" id="share-card">Share card</button><button class="btn" id="report">Season report</button></div>';
 
     // Measurements
     html += '<div class="section-title">Measurements</div>';
@@ -1701,6 +1770,8 @@ window.OTT_TABLE_2025 = {
     view.log.querySelector('#edit').onclick = function () { go('#edit/' + p.id); };
     view.log.querySelector('#add-m').onclick = function () { go('#measure/' + p.id); };
     view.log.querySelector('#add-c').onclick = function () { go('#care/' + p.id); };
+    view.log.querySelector('#share-card').onclick = function () { shareCard(p); };
+    view.log.querySelector('#report').onclick = function () { go('#report/' + p.id); };
     loadThumbs(view.log);
     view.log.querySelector('#add-ph').onclick = function () { view.log.querySelector('#ph-file').click(); };
     Array.prototype.forEach.call(view.log.querySelectorAll('[data-open-patch]'), function (b) {
@@ -1847,6 +1918,7 @@ window.OTT_TABLE_2025 = {
     var v = p || { kind: pendingKind || lastKind, name: '', season: new Date().getFullYear(), seed: '', pollinator: '',
                    pollinationDate: '', status: 'growing', finalWeight: '', notes: '' };
     pendingKind = null;
+    var wo = (p && p.weighoff) || { site: '', date: '', place: '', ott: '' };
     var html = '<button class="link-btn back" id="back">\u2039 ' + (isNew ? 'All fruit' : esc(p.name)) + '</button>' +
       '<h2 class="form-title">' + (isNew ? 'Add fruit' : 'Edit ' + esc(kindOf(p).label.toLowerCase())) + '</h2>' +
       '<div class="card">' +
@@ -1869,6 +1941,12 @@ window.OTT_TABLE_2025 = {
           return '<option value="' + s + '"' + (v.status === s ? ' selected' : '') + '>' + s.charAt(0).toUpperCase() + s.slice(1) + '</option>';
         }).join('') + '</select></div>' +
         '<div id="pf-final-wrap"><label for="pf-final" id="pf-final-label">Scale weight (lbs)</label><input class="txt" id="pf-final" type="number" inputmode="decimal" step="any" value="' + esc(v.finalWeight) + '"></div></div>' +
+      '<div id="pf-wo">' +
+        '<div class="f f-grid"><div><label for="pf-wo-site">Weigh-off site</label><input class="txt" id="pf-wo-site" maxlength="80" placeholder="e.g. Stillwater" value="' + esc(wo.site) + '"></div>' +
+          '<div><label for="pf-wo-date">Weigh-off date</label><input class="txt" id="pf-wo-date" type="date" value="' + esc(wo.date) + '"></div></div>' +
+        '<div class="f f-grid"><div><label for="pf-wo-place">Placing</label><input class="txt" id="pf-wo-place" maxlength="40" placeholder="e.g. 3rd" value="' + esc(wo.place) + '"></div>' +
+          '<div id="pf-wo-ott-wrap"><label for="pf-wo-ott">Official OTT (in)</label><input class="txt" id="pf-wo-ott" type="number" inputmode="decimal" step="any" placeholder="optional" value="' + esc(wo.ott) + '"></div></div>' +
+      '</div>' +
       '<div class="f"><label for="pf-notes">Notes</label><textarea class="area" id="pf-notes" placeholder="Patch location, soil, anything worth remembering">' + esc(v.notes) + '</textarea></div>' +
       '</div><div class="form-error" id="pf-err" hidden></div>' +
       '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save</button></div>' +
@@ -1879,6 +1957,8 @@ window.OTT_TABLE_2025 = {
     function sync() {
       var K = window.FRUIT.KINDS[$('pf-kind').value];
       $('pf-final-wrap').style.visibility = $('pf-status').value === 'weighed' ? 'visible' : 'hidden';
+      $('pf-wo').hidden = $('pf-status').value !== 'weighed';
+      $('pf-wo-ott-wrap').style.visibility = K.method === 'ott' ? 'visible' : 'hidden';
       $('pf-final-label').textContent = K.method === 'length' ? 'Official length (in)' : 'Scale weight (lbs)';
       $('pf-seed-hint').textContent = K.method === 'length' ? 'Length and grower, e.g. 126.5 Smith' : 'Weight and grower, e.g. 2145 McMullen';
       $('pf-status').querySelector('option[value="weighed"]').textContent = K.method === 'length' ? 'Measured' : 'Weighed';
@@ -1915,6 +1995,11 @@ window.OTT_TABLE_2025 = {
       target.pollinator = $('pf-pollinator').value.trim();
       target.status = $('pf-status').value;
       target.finalWeight = target.status === 'weighed' && fw > 0 ? fw : '';
+      if (target.status === 'weighed') {
+        var wott = window.OTT.clean($('pf-wo-ott').value);
+        target.weighoff = { site: $('pf-wo-site').value.trim(), date: $('pf-wo-date').value,
+                            place: $('pf-wo-place').value.trim(), ott: K.method === 'ott' && wott > 0 ? wott : '' };
+      }
       target.notes = $('pf-notes').value.trim();
       if ($('pf-patch')) target.patchId = $('pf-patch').value;
       else if (!target.patchId) target.patchId = '';
@@ -2294,6 +2379,7 @@ window.OTT_TABLE_2025 = {
     p.season = +p.season || new Date().getFullYear();
     if (!window.FRUIT.KINDS[p.kind]) p.kind = 'pumpkin';
     if (typeof p.patchId !== 'string') p.patchId = '';
+    if (!p.weighoff || typeof p.weighoff !== 'object') p.weighoff = { site: '', date: '', place: '', ott: '' };
     p.measurements.forEach(function (m) {
       if (m.value === undefined) m.value = typeof m.lbs === 'number' ? m.lbs : null;
     });
@@ -2541,13 +2627,15 @@ window.OTT_TABLE_2025 = {
   /* ---- Patch tab: patches + the whole year-round log --------------------- */
   function renderPatches() {
     var html = '<div class="btn-row" style="margin-top:0"><button class="btn btn-primary" id="pl-add">+ Log patch work</button>' +
-      '<button class="btn" id="pt-new">+ New patch</button></div>';
+      '<button class="btn" id="pt-new">+ New patch</button></div>' +
+      '<button class="btn" id="feed-calc" style="margin-top:10px">Feed mix calculator</button>';
 
     if (!db.patches.length) {
       html += '<div class="empty" style="margin-top:14px">Name your growing areas \u2013 \u201cNorth patch\u201d, \u201cHoop house\u201d \u2013 then log compost, amendments, cover crops and soil tests year round.' +
         '<br><br>When you add a fruit, you can pick which patch it\u2019s growing in.</div>';
       view.log.innerHTML = html;
       document.getElementById('pt-new').onclick = function () { go('#newpatch'); };
+      document.getElementById('feed-calc').onclick = function () { go('#feed'); };
       document.getElementById('pl-add').onclick = function () { go('#newpatch'); };
       return;
     }
@@ -2590,6 +2678,7 @@ window.OTT_TABLE_2025 = {
 
     view.log.innerHTML = html;
     document.getElementById('pt-new').onclick = function () { go('#newpatch'); };
+    document.getElementById('feed-calc').onclick = function () { go('#feed'); };
     document.getElementById('pl-add').onclick = function () {
       go('#plog/' + (patchFilter || db.patches[0].id));
     };
@@ -2869,6 +2958,340 @@ window.OTT_TABLE_2025 = {
         return '<tr data-pt="' + esc(x.pt.id) + '"><td><b>' + esc(x.pt.name) + '</b><small>' + fmtDate(x.t.date, true) + '</small></td>' +
           cols.map(function (f) { var v = x.t.soil[f[0]]; return '<td>' + (typeof v === 'number' ? fmt(v, 2) : '\u2013') + '</td>'; }).join('') + '</tr>';
       }).join('') + '</tbody></table></div>';
+  }
+
+  /* ------------------------------ WEIGH-OFF ------------------------------- */
+  /* fruit.weighoff = { site, date, place, ott }  (ott only for OTT kinds).
+     % heavy uses the official OTT when given - that's how weigh-offs figure
+     it - otherwise the last logged estimate.                                */
+
+  function chartAt(p, ott) {
+    var r = window.FRUIT.estimate(p.kind, ott / 3, ott / 3, ott / 3);
+    return r.ok && typeof r.lbs === 'number' ? r.lbs : null;
+  }
+  function heavyInfo(p) {
+    if (p.status !== 'weighed' || !p.finalWeight || !isOtt(p)) return null;
+    var wo = p.weighoff || {}, est = null, basis = '';
+    if (wo.ott) { est = chartAt(p, wo.ott); basis = 'official OTT ' + fmt(wo.ott, 2) + '\u2033'; }
+    if (est === null) { var lv = latestVal(p); if (lv) { est = lv.value; basis = 'last estimate, ' + fmtDate(lv.date); } }
+    if (!est) return null;
+    return { est: est, pct: (p.finalWeight - est) / est * 100, basis: basis };
+  }
+  function heavyText(h) {
+    if (!h) return '';
+    return Math.abs(h.pct) < 0.05 ? 'right on the chart' : fmt(Math.abs(h.pct), 1) + '% ' + (h.pct > 0 ? 'heavy' : 'light');
+  }
+  function weighoffHtml(p) {
+    if (p.status !== 'weighed') return '';
+    var wo = p.weighoff || {}, h = heavyInfo(p), u = unitOf(p);
+    var bits = [];
+    if (wo.site) bits.push('<span>Site <b>' + esc(wo.site) + '</b></span>');
+    if (wo.date) bits.push('<span>Date <b>' + fmtDate(wo.date, true) + '</b></span>');
+    if (wo.place) bits.push('<span>Placing <b>' + esc(wo.place) + '</b></span>');
+    if (wo.ott) bits.push('<span>Official OTT <b>' + fmt(wo.ott, 2) + '\u2033</b></span>');
+    if (!bits.length && !p.finalWeight) return '';
+    return '<div class="section-title">Weigh-off</div><div class="card wo-card">' +
+      (p.finalWeight ? '<div class="wo-weight">' + fmt(p.finalWeight, dpOf(p)) + ' <small>' + u + (u === 'in' ? ' official' : '') + '</small>' +
+        (h ? '<span class="wo-heavy ' + (h.pct >= 0 ? 'up' : 'down') + '">' + heavyText(h) + '</span>' : '') + '</div>' : '') +
+      (h ? '<div class="muted" style="margin-top:2px">Chart said ' + fmt(h.est) + ' lbs (' + esc(h.basis) + ')</div>' : '') +
+      (bits.length ? '<div class="pk-meta" style="margin-top:10px">' + bits.join('') + '</div>' : '') +
+      '</div>';
+  }
+
+  /* ------------------------------ BATCH ENTRY ----------------------------- */
+  function renderBatch() {
+    var list = db.pumpkins.filter(function (p) { return p.status === 'growing'; })
+      .sort(function (a, b) { return window.FRUIT.ORDER.indexOf(a.kind) - window.FRUIT.ORDER.indexOf(b.kind) || (a.name < b.name ? -1 : 1); });
+    var html = '<button class="link-btn back" id="back">\u2039 All fruit</button>' +
+      '<h2 class="form-title">Measure all</h2>' +
+      '<p class="muted" style="margin:-6px 0 14px">Fill in the ones you measured today \u2013 leave the rest blank.</p>' +
+      '<div class="card"><div class="f"><label for="b-date">Date</label><input class="txt" id="b-date" type="date" value="' + today() + '"></div></div>';
+    if (!list.length) html += '<div class="empty">No fruit marked as growing.</div>';
+    list.forEach(function (p) {
+      var K = kindOf(p), lv = latestVal(p), u = unitOf(p);
+      var inp = function (part, ph) {
+        return '<div class="input-wrap b-in"><input data-b="' + esc(p.id) + '" data-part="' + part + '" type="number" inputmode="decimal" step="any" min="0" placeholder="' + ph + '"><span class="unit">' + (K.method === 'weight' ? 'lbs' : 'in') + '</span></div>';
+      };
+      html += '<div class="card b-card"><div class="pk-top"><span class="pk-name">' + esc(p.name) + '</span>' +
+        '<span class="badge is-kind">' + esc(K.label) + '</span></div>' +
+        '<div class="muted" style="margin:2px 0 10px">' + (lv ? 'Last: ' + fmtDate(lv.date) + ' \u00b7 ' + fmt(lv.value, dpOf(p)) + ' ' + u : 'No measurements yet') + '</div>' +
+        (K.method === 'ott'
+          ? '<div class="b-grid">' + inp('c', 'Circ.') + inp('s', 'Side') + inp('e', 'End') + '</div>'
+          : inp('v', K.method === 'length' ? 'Length' : 'Weight')) +
+        '<div class="b-live muted" id="bl-' + esc(p.id) + '"></div></div>';
+    });
+    html += '<div class="form-error" id="b-err" hidden></div>' +
+      '<div class="btn-row"><button class="btn" id="cancel">Cancel</button><button class="btn btn-primary" id="save">Save all</button></div>';
+    view.log.innerHTML = html;
+
+    var $ = function (id) { return document.getElementById(id); };
+    function vals(p) {
+      var o = {};
+      Array.prototype.forEach.call(view.log.querySelectorAll('[data-b="' + p.id + '"]'), function (i) { o[i.getAttribute('data-part')] = i.value; });
+      return o;
+    }
+    function filled(o) { return Object.keys(o).some(function (k) { return String(o[k]).trim() !== ''; }); }
+    function live(p) {
+      var o = vals(p), el = $('bl-' + p.id), lv = latestVal(p);
+      if (!filled(o)) { el.textContent = ''; return; }
+      if (isOtt(p)) {
+        var r = window.FRUIT.estimate(p.kind, o.c, o.s, o.e);
+        if (!r.ok) { el.textContent = 'Enter all three'; return; }
+        el.innerHTML = 'OTT ' + fmt(r.ott, 2) + '\u2033 \u2192 ' + (r.lbs === null ? 'off the chart' : '<b>' + fmt(r.lbs) + ' lbs</b>') + gainNote(p, r.lbs, lv);
+      } else {
+        var n = window.OTT.clean(o.v);
+        el.innerHTML = n > 0 ? gainNote(p, n, lv).replace(/^ \u00b7 /, '') : '';
+      }
+    }
+    function gainNote(p, value, lv) {
+      if (!lv || value === null) return '';
+      var days = dayNum($('b-date').value) - dayNum(lv.date);
+      return days > 0 ? ' \u00b7 ' + signed((value - lv.value) / days, unitOf(p) === 'in' ? 2 : 1) + ' ' + unitOf(p) + '/day' : '';
+    }
+    list.forEach(function (p) {
+      Array.prototype.forEach.call(view.log.querySelectorAll('[data-b="' + p.id + '"]'), function (i) {
+        i.addEventListener('input', function () { live(p); });
+      });
+    });
+    $('b-date').addEventListener('input', function () { list.forEach(live); });
+    var back = function () { location.replace('#pumpkins'); };
+    $('back').onclick = back; $('cancel').onclick = back;
+
+    $('save').onclick = function () {
+      var date = $('b-date').value;
+      if (!dayNum(date)) return showErr('b-err', 'Pick a date.');
+      var recs = [], problems = [];
+      list.forEach(function (p) {
+        var o = vals(p);
+        if (!filled(o)) return;
+        if (isOtt(p)) {
+          var r = window.FRUIT.estimate(p.kind, o.c, o.s, o.e);
+          if (!r.ok) { problems.push(p.name); return; }
+          recs.push([p, { id: uid('m'), date: date, circumference: r.measurements.circumference, sideToSide: r.measurements.sideToSide,
+            endToEnd: r.measurements.endToEnd, ott: r.ott, lbs: r.lbs, value: r.lbs, note: '' }]);
+        } else {
+          var n = window.OTT.clean(o.v);
+          if (!(n > 0) || n > 5000) { problems.push(p.name); return; }
+          var rec = { id: uid('m'), date: date, value: n, note: '' };
+          if (kindOf(p).method === 'weight') rec.lbs = n;
+          recs.push([p, rec]);
+        }
+      });
+      if (problems.length) return showErr('b-err', 'Check the numbers for: ' + problems.join(', ') + '.');
+      if (!recs.length) return showErr('b-err', 'Nothing entered yet.');
+      recs.forEach(function (x) { x[0].measurements.push(x[1]); touch(x[0]); });
+      if (!persist()) return;
+      toast('Saved ' + recs.length + ' measurement' + (recs.length === 1 ? '' : 's'));
+      back();
+    };
+  }
+
+  /* ------------------------------ SEASON REPORT --------------------------- */
+  /* A light, print-ready page. iPhone: Print / Save PDF -> pinch out on the
+     preview -> Share -> Save to Files, or print it.                         */
+  var reportUrls = [];
+  function renderReport(p) {
+    reportUrls.forEach(function (u) { URL.revokeObjectURL(u); }); reportUrls = [];
+    var K = kindOf(p), u = unitOf(p), dp = dpOf(p), m = sortedMeasurements(p);
+    var lv = latestVal(p), g = gainSeries(p), h = heavyInfo(p), wo = p.weighoff || {};
+    var best = null; g.forEach(function (x) { if (!best || x.perDay > best.perDay) best = x; });
+    var pt = p.patchId ? findPatch(p.patchId) : null;
+    var rows = function (pairs) {
+      return pairs.filter(function (r) { return r[1] !== '' && r[1] !== null && r[1] !== undefined; })
+        .map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; }).join('');
+    };
+    var html = '<div class="no-print btn-row" style="margin-top:0"><button class="btn" id="r-back">\u2039 Back</button><button class="btn btn-primary" id="r-print">Print / Save PDF</button></div>' +
+      '<article class="report">' +
+      '<header><div><div class="r-kicker">' + esc(K.label) + ' \u00b7 ' + p.season + ' season report</div><h1>' + esc(p.name) + '</h1>' +
+        (cross(p) ? '<div class="r-cross">' + esc(cross(p)) + '</div>' : '') + '</div>' +
+        '<img src="icons/icon-192.png" alt="" class="r-logo"></header>' +
+      '<div class="r-cols"><table class="r-facts">' + rows([
+        ['Status', statusLabel(p)], ['Patch', pt ? esc(pt.name) : ''],
+        ['Pollinated', p.pollinationDate ? fmtDate(p.pollinationDate, true) : ''],
+        ['Measurements', m.length || ''],
+        [K.method === 'ott' ? 'Last estimate' : 'Last reading', lv ? fmt(lv.value, dp) + ' ' + u + ' (' + fmtDate(lv.date, true) + ')' : ''],
+        ['Best gain', best ? signed(best.perDay, u === 'in' ? 2 : 1) + ' ' + u + '/day (to ' + fmtDate(best.date) + ')' : '']
+      ]) + '</table>' +
+      (p.status === 'weighed' ? '<table class="r-facts">' + rows([
+        [K.method === 'length' ? 'Official length' : 'Official weight', p.finalWeight ? fmt(p.finalWeight, dp) + ' ' + u : ''],
+        ['% heavy', h ? heavyText(h) : ''], ['Weigh-off', esc(wo.site || '')],
+        ['Date', wo.date ? fmtDate(wo.date, true) : ''], ['Placing', esc(wo.place || '')],
+        ['Official OTT', wo.ott ? fmt(wo.ott, 2) + '\u2033' : '']
+      ]) + '</table>' : '') + '</div>';
+    if (m.filter(hasVal).length) html += '<h2>Growth</h2><div class="r-chart">' + weightChart(p) + '</div>';
+    if (m.length) {
+      var gb = {}; g.forEach(function (x) { gb[x.date] = x; });
+      html += '<h2>Measurements</h2><table class="r-table"><thead><tr><th>Date</th><th>DAP</th>' +
+        (K.method === 'ott' ? '<th>OTT</th>' : '') + '<th>' + (K.method === 'ott' ? 'Est. lbs' : K.method === 'length' ? 'Inches' : 'Lbs') + '</th><th>Per day</th></tr></thead><tbody>' +
+        m.map(function (x) {
+          var d = dap(p, x.date);
+          return '<tr><td>' + fmtDate(x.date, true) + '</td><td>' + (d !== null && d >= 0 ? d : '') + '</td>' +
+            (K.method === 'ott' ? '<td>' + fmt(x.ott, 2) + '</td>' : '') +
+            '<td>' + (hasVal(x) ? fmt(x.value, dp) : 'off chart') + '</td><td>' + (gb[x.date] ? signed(gb[x.date].perDay, u === 'in' ? 2 : 1) : '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    var care = p.careLog.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    if (care.length) html += '<h2>Care &amp; nutrients</h2><table class="r-table"><tbody>' + care.map(function (c) {
+      return '<tr><td>' + fmtDate(c.date, true) + '</td><td>' + esc(c.type) + '</td><td>' + esc([c.product, c.amount].filter(Boolean).join(' \u00b7 ')) +
+        (c.note ? '<div class="r-note">' + esc(c.note) + '</div>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table>';
+    if (pt) {
+      var from = (p.season - 1) + '-08-01', to = p.season + '-12-31';
+      var work = entriesFor(pt.id).filter(function (e) { return e.date >= from && e.date <= to; }).reverse();
+      if (work.length) html += '<h2>Patch work \u00b7 ' + esc(pt.name) + '</h2><table class="r-table"><tbody>' + work.map(function (e) {
+        return '<tr><td>' + fmtDate(e.date, true) + '</td><td>' + esc(e.type) + '</td><td>' +
+          (e.type === 'Soil test' ? esc(soilSummary(e.soil || {})) : esc([e.product, e.amount].filter(Boolean).join(' \u00b7 '))) +
+          (e.note ? '<div class="r-note">' + esc(e.note) + '</div>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    }
+    var photos = sortedPhotos(p);
+    if (photos.length) {
+      var pick = photos.length <= 6 ? photos : [0, 1, 2, 3, 4, 5].map(function (i) { return photos[Math.round(i * (photos.length - 1) / 5)]; });
+      html += '<h2>Photos</h2><div class="r-photos">' + pick.map(function (ph) {
+        return '<figure><img data-rphoto="' + esc(ph.id) + '" alt=""><figcaption>' + fmtDate(ph.date, true) + (ph.caption ? ' \u2013 ' + esc(ph.caption) : '') + '</figcaption></figure>';
+      }).join('') + '</div>';
+    }
+    if (p.notes) html += '<h2>Notes</h2><p class="r-notes">' + esc(p.notes) + '</p>';
+    html += '<footer>Weights are estimates from official GPC charts unless marked official. Generated ' + fmtDate(today(), true) + '.</footer></article>';
+
+    view.log.innerHTML = html;
+    document.body.classList.add('is-report');
+    Array.prototype.forEach.call(view.log.querySelectorAll('[data-rphoto]'), function (img) {
+      photoStore.get(img.getAttribute('data-rphoto')).then(function (r) {
+        if (r && r.full) { var url = bufToUrl(r.full, r.type); reportUrls.push(url); img.src = url; }
+      }).catch(function () {});
+    });
+    document.getElementById('r-back').onclick = function () { location.replace('#pumpkin/' + p.id); };
+    document.getElementById('r-print').onclick = function () {
+      try { window.print(); } catch (e) { toast('Printing isn\u2019t available here \u2013 open the site in Safari and try again.'); }
+    };
+  }
+  window.addEventListener('hashchange', function () {
+    if (!/^#\/?report\//.test(location.hash)) document.body.classList.remove('is-report');
+  });
+
+  /* ------------------------------ SHARE CARD ------------------------------ */
+  function loadImg(src) {
+    return new Promise(function (res, rej) {
+      var i = new Image(); i.onload = function () { res(i); }; i.onerror = rej; i.src = src;
+    });
+  }
+  function shareCard(p) {
+    var W = 1080, H = 1350, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var x = c.getContext('2d'), K = kindOf(p), u = unitOf(p), lv = latestVal(p), g = lastGain(p);
+    var FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    var cover = p.photos.length ? latestPhoto(p) : null;
+    toast('Making your card\u2026');
+    var photoP = cover ? photoStore.get(cover.id).then(function (r) {
+      if (!r || !r.full) return null;
+      var url = bufToUrl(r.full, r.type);
+      return loadImg(url).then(function (img) { URL.revokeObjectURL(url); return img; });
+    }).catch(function () { return null; }) : Promise.resolve(null);
+    Promise.all([photoP, loadImg('icons/icon-512.png').catch(function () { return null; })]).then(function (imgs) {
+      var photo = imgs[0], logo = imgs[1], photo0 = !!photo;
+      x.fillStyle = '#0a0a0a'; x.fillRect(0, 0, W, H);
+      var PH = photo0 ? 820 : 700;
+      if (photo) {
+        var s = Math.max(W / photo.width, PH / photo.height), w = photo.width * s, h = photo.height * s;
+        x.drawImage(photo, (W - w) / 2, (PH - h) / 2, w, h);
+        var gr = x.createLinearGradient(0, PH - 320, 0, PH);
+        gr.addColorStop(0, 'rgba(10,10,10,0)'); gr.addColorStop(1, 'rgba(10,10,10,1)');
+        x.fillStyle = gr; x.fillRect(0, PH - 320, W, 320);
+      } else if (logo) {
+        x.drawImage(logo, (W - 560) / 2, 70, 560, 560);
+      }
+      var y = PH - 20;
+      x.fillStyle = '#f79646'; x.font = '700 40px ' + FONT;
+      x.fillText((K.label + ' \u00b7 ' + p.season).toUpperCase(), 70, y);
+      x.fillStyle = '#fff'; x.font = '800 92px ' + FONT;
+      var name = p.name; while (x.measureText(name).width > W - 140 && name.length > 3) name = name.slice(0, -2);
+      if (name !== p.name) name += '\u2026';
+      x.fillText(name, 70, y + 100);
+      if (cross(p)) { x.fillStyle = '#9a9490'; x.font = '500 40px ' + FONT; x.fillText(cross(p).slice(0, 48), 70, y + 160); }
+      var weighed = p.status === 'weighed' && p.finalWeight;
+      var big = weighed ? fmt(p.finalWeight, dpOf(p)) : lv ? fmt(lv.value, dpOf(p)) : '\u2014';
+      x.fillStyle = '#f79646'; x.font = '800 190px ' + FONT; x.fillText(big, 70, y + 360);
+      var bw = x.measureText(big).width;
+      x.fillStyle = '#9a9490'; x.font = '700 60px ' + FONT;
+      x.fillText(u + (weighed ? ' official' : K.method === 'ott' ? ' est.' : ''), 90 + bw, y + 360);
+      var line = [];
+      if (!weighed && g) line.push(signed(g.perDay, u === 'in' ? 2 : 1) + ' ' + u + '/day');
+      var d = dap(p, weighed ? ((p.weighoff || {}).date || today()) : (lv ? lv.date : today()));
+      if (d !== null && d >= 0) line.push(d + ' days after pollination');
+      var h = heavyInfo(p); if (h) line.push(heavyText(h));
+      x.fillStyle = '#fff'; x.font = '600 44px ' + FONT; x.fillText(line.join('  \u00b7  '), 70, y + 440);
+      x.fillStyle = '#5c5753'; x.font = '500 34px ' + FONT;
+      x.fillText((lv ? fmtDate(weighed && p.weighoff && p.weighoff.date ? p.weighoff.date : lv.date, true) : '') , 70, H - 50);
+      if (logo) x.drawImage(logo, W - 140, H - 140, 90, 90);
+      c.toBlob(function (blob) {
+        var file = new File([blob], (p.name.replace(/[^\w\- ]+/g, '') || 'fruit') + '.jpg', { type: 'image/jpeg' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file] }).catch(function () {});
+        } else {
+          var url = URL.createObjectURL(blob), a = document.createElement('a');
+          a.href = url; a.download = file.name; document.body.appendChild(a); a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+        }
+      }, 'image/jpeg', 0.9);
+    });
+  }
+
+  /* ------------------------------ FEED MIX CALCULATOR --------------------- */
+  /* Pure arithmetic for injector (Dosatron-style) setups - no feeding advice. */
+  var FEED_KEY = 'ottlog.feedcalc';
+  var AMT_UNITS = [['tsp', 'tsp'], ['tbsp', 'tbsp'], ['floz', 'fl oz'], ['cup', 'cups'], ['ml', 'ml'], ['g', 'grams'], ['oz', 'oz (weight)']];
+  var TO_BASE = { tsp: 4.92892, tbsp: 14.7868, floz: 29.5735, cup: 236.588, ml: 1, g: 1, oz: 28.3495 };  // ml or g
+  function renderFeedCalc() {
+    var s = {};
+    try { s = JSON.parse(localStorage.getItem(FEED_KEY)) || {}; } catch (e) {}
+    var v = { ratio: s.ratio || 100, rate: s.rate || '', unit: s.unit || 'tbsp', per: s.per || 'gal', tank: s.tank || '' };
+    view.log.innerHTML =
+      '<button class="link-btn back" id="back">\u2039 Patch</button>' +
+      '<h2 class="form-title">Feed mix calculator</h2>' +
+      '<p class="muted" style="margin:-6px 0 14px">For injectors like a Dosatron: how much product goes in the stock tank so the water coming out of the hose is at your rate.</p>' +
+      '<div class="card">' +
+      '<div class="f"><label for="fc-ratio">Injector ratio</label><p class="hint">1:100 is the same as a 1% setting</p>' +
+        '<div class="input-wrap"><span class="unit" style="margin:0 6px 0 0">1 :</span><input id="fc-ratio" type="number" inputmode="decimal" step="any" min="1" value="' + esc(v.ratio) + '"></div><div class="muted" id="fc-pct" style="margin-top:6px"></div></div>' +
+      '<div class="f"><label for="fc-rate">Rate you want at the plant</label><p class="hint">From the product label or your feeding plan</p>' +
+        '<div class="f-grid" style="grid-template-columns:1fr 1fr 1fr"><input class="txt" id="fc-rate" type="number" inputmode="decimal" step="any" min="0" placeholder="0" value="' + esc(v.rate) + '">' +
+        '<select class="sel" id="fc-unit">' + AMT_UNITS.map(function (x) { return '<option value="' + x[0] + '"' + (v.unit === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>' +
+        '<select class="sel" id="fc-per"><option value="gal"' + (v.per === 'gal' ? ' selected' : '') + '>per gallon</option><option value="l"' + (v.per === 'l' ? ' selected' : '') + '>per liter</option></select></div></div>' +
+      '<div class="f"><label for="fc-tank">Stock tank / bucket size <span class="muted">(optional)</span></label>' +
+        '<div class="input-wrap"><input id="fc-tank" type="number" inputmode="decimal" step="any" min="0" placeholder="0" value="' + esc(v.tank) + '"><span class="unit" id="fc-tank-unit">gal</span></div></div>' +
+      '</div><div class="result" id="fc-out" style="margin-top:14px"></div>' +
+      '<p class="muted" style="margin-top:14px">Check the label for how much product dissolves in water \u2013 very strong stock mixes can settle out or clog the injector. This only does the math; it doesn\u2019t recommend what or how much to feed.</p>';
+    var $ = function (id) { return document.getElementById(id); };
+    function amount(baseQty, unit) {   // turn ml or g into friendly units
+      if (unit === 'g') return baseQty >= 1000 ? fmt(baseQty / 1000, 2) + ' kg' : fmt(baseQty, 1) + ' g';
+      if (unit === 'oz') return baseQty / 28.3495 >= 16 ? fmt(baseQty / 453.592, 2) + ' lbs' : fmt(baseQty / 28.3495, 1) + ' oz';
+      if (unit === 'ml') return baseQty >= 1000 ? fmt(baseQty / 1000, 2) + ' liters' : fmt(baseQty, 0) + ' ml';
+      var cups = baseQty / 236.588;
+      if (cups >= 16) return fmt(baseQty / 3785.41, 2) + ' gallons';
+      if (cups >= 1) return fmt(cups, 2) + ' cups';
+      if (baseQty >= 14.7868) return fmt(baseQty / 14.7868, 1) + ' tbsp';
+      return fmt(baseQty / 4.92892, 1) + ' tsp';
+    }
+    function calc() {
+      var ratio = window.OTT.clean($('fc-ratio').value), rate = window.OTT.clean($('fc-rate').value);
+      var tank = window.OTT.clean($('fc-tank').value), unit = $('fc-unit').value, per = $('fc-per').value;
+      var water = per === 'gal' ? 'gallon' : 'liter';
+      $('fc-tank-unit').textContent = per === 'gal' ? 'gal' : 'L';
+      $('fc-pct').textContent = ratio > 0 ? 'Injector setting: ' + fmt(100 / ratio, 2) + '%' : '';
+      try { localStorage.setItem(FEED_KEY, JSON.stringify({ ratio: $('fc-ratio').value, rate: $('fc-rate').value, unit: unit, per: per, tank: $('fc-tank').value })); } catch (e) {}
+      var out = $('fc-out');
+      if (!(ratio > 0) || !(rate > 0)) { out.innerHTML = '<div class="result-label">Stock mix</div><div class="muted">Enter the ratio and your rate.</div>'; return; }
+      var perStock = rate * TO_BASE[unit] * ratio;          // per gallon/liter of stock
+      var label = AMT_UNITS.filter(function (x) { return x[0] === unit; })[0][1];
+      out.innerHTML = '<div class="result-label">Stock mix</div>' +
+        '<div class="fc-big">' + amount(perStock, unit) + '</div><div class="muted">of product per ' + water + ' of stock</div>' +
+        (tank > 0 ? '<div class="fc-tank">' + amount(perStock * tank, unit) + ' <span class="muted">for ' + fmt(tank, 2) + ' ' + water + (tank === 1 ? '' : 's') + ' of stock</span></div>' +
+          '<div class="muted" style="margin-top:6px">That tank feeds about ' + fmt(tank * ratio) + ' ' + water + 's of water at ' + fmt(rate, 2) + ' ' + esc(label) + ' per ' + water + '.</div>' : '');
+    }
+    ['fc-ratio', 'fc-rate', 'fc-tank'].forEach(function (id) { $(id).addEventListener('input', calc); });
+    ['fc-unit', 'fc-per'].forEach(function (id) { $(id).addEventListener('change', calc); });
+    $('back').onclick = function () { location.replace('#patches'); };
+    calc();
   }
 
   normalizeDb();
