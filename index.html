@@ -1624,7 +1624,7 @@ window.OTT_TABLE_2025 = {
       var l = latest(p), lv = latestVal(p), g = lastGain(p), d = dap(p, p.status === 'growing' ? today() : (l && l.date));
       var u = unitOf(p), k = kindOf(p);
       var weight = p.status === 'weighed' && p.finalWeight
-        ? fmt(p.finalWeight, dpOf(p)) + ' <small>' + u + (k.method === 'length' ? ' official' : ' actual') + '</small>'
+        ? fmt(p.finalWeight, 2) + ' <small>' + u + (k.method === 'length' ? ' official' : ' actual') + '</small>'
         : lv ? fmt(lv.value, dpOf(p)) + ' <small>' + u + (k.method === 'ott' ? ' est.' : '') + '</small>'
         : l ? '<small>off the chart</small>' : '<small>no measurements</small>';
       var cover = p.photos.length ? latestPhoto(p) : null;
@@ -1694,7 +1694,7 @@ window.OTT_TABLE_2025 = {
            g ? 'over ' + g.days + ' day' + (g.days > 1 ? 's' : '') : 'Needs 2 measurements', g ? (g.perDay >= 0 ? 'up' : 'down') : '') +
       stat('Days after pollination', d !== null && d >= 0 ? d : '\u2014', p.pollinationDate ? (p.status === 'growing' ? 'as of today' : 'at last measurement') : 'Add a pollination date') +
       (p.status === 'weighed' && p.finalWeight
-        ? stat(k.method === 'length' ? 'Official length' : 'Scale weight', fmt(p.finalWeight, dp) + ' <small>' + u + '</small>',
+        ? stat(k.method === 'length' ? 'Official length' : 'Scale weight', fmt(p.finalWeight, 2) + ' <small>' + u + '</small>',
                heavyText(heavyInfo(p)))
         : stat('Measurements', m.length, p.careLog.length + ' care entr' + (p.careLog.length === 1 ? 'y' : 'ies'))) +
       '</div>';
@@ -1881,7 +1881,7 @@ window.OTT_TABLE_2025 = {
     if (p.status === 'weighed' && p.finalWeight) {
       var y = f.sy(p.finalWeight);
       inner += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + y + '" y2="' + y + '" stroke="#6fd39a" stroke-dasharray="5 4"/>' +
-               '<text x="' + (W - PR) + '" y="' + (y - 5) + '" text-anchor="end" font-size="10" fill="#6fd39a">' + (u === 'in' ? 'official ' : 'scale ') + fmt(p.finalWeight, dp) + '</text>';
+               '<text x="' + (W - PR) + '" y="' + (y - 5) + '" text-anchor="end" font-size="10" fill="#6fd39a">' + (u === 'in' ? 'official ' : 'scale ') + fmt(p.finalWeight, 2) + '</text>';
     }
     var tip = m.length === 1 ? '<div class="muted" style="margin:6px 6px 0">Add another measurement to draw the growth line.</div>' : '';
     return svgWrap(inner) + tip;
@@ -2721,7 +2721,7 @@ window.OTT_TABLE_2025 = {
     html += fruit.length ? '<div class="list">' + fruit.map(function (p) {
       var lv = latestVal(p);
       return '<button class="row" data-fr="' + esc(p.id) + '"><span class="row-main">' + esc(p.name) + '</span>' +
-        '<span class="row-right">' + (p.status === 'weighed' && p.finalWeight ? fmt(p.finalWeight, dpOf(p)) + ' ' + unitOf(p)
+        '<span class="row-right">' + (p.status === 'weighed' && p.finalWeight ? fmt(p.finalWeight, 2) + ' ' + unitOf(p)
           : lv ? fmt(lv.value, dpOf(p)) + ' ' + unitOf(p) : '') + '</span>' +
         '<span class="row-sub">' + esc(kindOf(p).label) + ' \u00b7 ' + p.season + ' \u00b7 ' + statusLabel(p) + '</span></button>';
     }).join('') + '</div>'
@@ -2991,7 +2991,7 @@ window.OTT_TABLE_2025 = {
     if (wo.ott) bits.push('<span>Official OTT <b>' + fmt(wo.ott, 2) + '\u2033</b></span>');
     if (!bits.length && !p.finalWeight) return '';
     return '<div class="section-title">Weigh-off</div><div class="card wo-card">' +
-      (p.finalWeight ? '<div class="wo-weight">' + fmt(p.finalWeight, dpOf(p)) + ' <small>' + u + (u === 'in' ? ' official' : '') + '</small>' +
+      (p.finalWeight ? '<div class="wo-weight">' + fmt(p.finalWeight, 2) + ' <small>' + u + (u === 'in' ? ' official' : '') + '</small>' +
         (h ? '<span class="wo-heavy ' + (h.pct >= 0 ? 'up' : 'down') + '">' + heavyText(h) + '</span>' : '') + '</div>' : '') +
       (h ? '<div class="muted" style="margin-top:2px">Chart said ' + fmt(h.est) + ' lbs (' + esc(h.basis) + ')</div>' : '') +
       (bits.length ? '<div class="pk-meta" style="margin-top:10px">' + bits.join('') + '</div>' : '') +
@@ -3113,7 +3113,7 @@ window.OTT_TABLE_2025 = {
         ['Best gain', best ? signed(best.perDay, u === 'in' ? 2 : 1) + ' ' + u + '/day (to ' + fmtDate(best.date) + ')' : '']
       ]) + '</table>' +
       (p.status === 'weighed' ? '<table class="r-facts">' + rows([
-        [K.method === 'length' ? 'Official length' : 'Official weight', p.finalWeight ? fmt(p.finalWeight, dp) + ' ' + u : ''],
+        [K.method === 'length' ? 'Official length' : 'Official weight', p.finalWeight ? fmt(p.finalWeight, 2) + ' ' + u : ''],
         ['% heavy', h ? heavyText(h) : ''], ['Weigh-off', esc(wo.site || '')],
         ['Date', wo.date ? fmtDate(wo.date, true) : ''], ['Placing', esc(wo.place || '')],
         ['Official OTT', wo.ott ? fmt(wo.ott, 2) + '\u2033' : '']
@@ -3189,41 +3189,61 @@ window.OTT_TABLE_2025 = {
       return loadImg(url).then(function (img) { URL.revokeObjectURL(url); return img; });
     }).catch(function () { return null; }) : Promise.resolve(null);
     Promise.all([photoP, loadImg('icons/icon-512.png').catch(function () { return null; })]).then(function (imgs) {
-      var photo = imgs[0], logo = imgs[1], photo0 = !!photo;
-      x.fillStyle = '#0a0a0a'; x.fillRect(0, 0, W, H);
-      var PH = photo0 ? 820 : 700;
+      var photo = imgs[0], logo = imgs[1];
+      var BG = '#0a0a0a', PH = 760;          // photo area is the top 760 px; text lives below it
+      x.fillStyle = BG; x.fillRect(0, 0, W, H);
+      x.save();
+      x.beginPath(); x.rect(0, 0, W, PH); x.clip();   // keep tall photos from spilling under the text
       if (photo) {
         var s = Math.max(W / photo.width, PH / photo.height), w = photo.width * s, h = photo.height * s;
         x.drawImage(photo, (W - w) / 2, (PH - h) / 2, w, h);
-        var gr = x.createLinearGradient(0, PH - 320, 0, PH);
+        var gr = x.createLinearGradient(0, PH - 220, 0, PH);
         gr.addColorStop(0, 'rgba(10,10,10,0)'); gr.addColorStop(1, 'rgba(10,10,10,1)');
-        x.fillStyle = gr; x.fillRect(0, PH - 320, W, 320);
+        x.fillStyle = gr; x.fillRect(0, PH - 220, W, 220);
       } else if (logo) {
-        x.drawImage(logo, (W - 560) / 2, 70, 560, 560);
+        x.drawImage(logo, (W - 560) / 2, 100, 560, 560);
       }
-      var y = PH - 20;
+      x.restore();
+
+      function fit(text, font, maxW) {      // shrink, then trim, so nothing runs off the card
+        var size = font.size;
+        x.font = font.weight + ' ' + size + 'px ' + FONT;
+        while (x.measureText(text).width > maxW && size > font.min) { size -= 4; x.font = font.weight + ' ' + size + 'px ' + FONT; }
+        var t = text;
+        while (x.measureText(t).width > maxW && t.length > 3) t = t.slice(0, -2);
+        return t === text ? t : t + '\u2026';
+      }
+      var L = 70, maxW = W - 2 * L;
+      x.textBaseline = 'alphabetic';
       x.fillStyle = '#f79646'; x.font = '700 40px ' + FONT;
-      x.fillText((K.label + ' \u00b7 ' + p.season).toUpperCase(), 70, y);
-      x.fillStyle = '#fff'; x.font = '800 92px ' + FONT;
-      var name = p.name; while (x.measureText(name).width > W - 140 && name.length > 3) name = name.slice(0, -2);
-      if (name !== p.name) name += '\u2026';
-      x.fillText(name, 70, y + 100);
-      if (cross(p)) { x.fillStyle = '#9a9490'; x.font = '500 40px ' + FONT; x.fillText(cross(p).slice(0, 48), 70, y + 160); }
+      x.fillText((K.label + ' \u00b7 ' + p.season).toUpperCase(), L, 820);
+      x.fillStyle = '#ffffff';
+      x.fillText(fit(p.name, { weight: 800, size: 92, min: 60 }, maxW), L, 915);
+      if (cross(p)) { x.fillStyle = '#c9c3be'; x.fillText(fit(cross(p), { weight: 500, size: 42, min: 30 }, maxW), L, 975); }
+
       var weighed = p.status === 'weighed' && p.finalWeight;
-      var big = weighed ? fmt(p.finalWeight, dpOf(p)) : lv ? fmt(lv.value, dpOf(p)) : '\u2014';
-      x.fillStyle = '#f79646'; x.font = '800 190px ' + FONT; x.fillText(big, 70, y + 360);
+      var big = weighed ? fmt(p.finalWeight, 2) : lv ? fmt(lv.value, dpOf(p)) : '\u2014';
+      var unitTxt = u + (weighed ? (u === 'in' ? ' official' : ' official') : K.method === 'ott' ? ' est.' : '');
+      x.font = '800 200px ' + FONT; x.fillStyle = '#f79646';
+      var bigSize = 200;
+      x.font = '700 58px ' + FONT; var uw = x.measureText(unitTxt).width;
+      x.font = '800 ' + bigSize + 'px ' + FONT;
+      while (x.measureText(big).width + uw + 24 > maxW && bigSize > 120) { bigSize -= 10; x.font = '800 ' + bigSize + 'px ' + FONT; }
+      x.fillText(big, L - 6, 1165);
       var bw = x.measureText(big).width;
-      x.fillStyle = '#9a9490'; x.font = '700 60px ' + FONT;
-      x.fillText(u + (weighed ? ' official' : K.method === 'ott' ? ' est.' : ''), 90 + bw, y + 360);
+      x.fillStyle = '#c9c3be'; x.font = '700 58px ' + FONT; x.fillText(unitTxt, L + bw + 18, 1165);
+
       var line = [];
       if (!weighed && g) line.push(signed(g.perDay, u === 'in' ? 2 : 1) + ' ' + u + '/day');
       var d = dap(p, weighed ? ((p.weighoff || {}).date || today()) : (lv ? lv.date : today()));
       if (d !== null && d >= 0) line.push(d + ' days after pollination');
-      var h = heavyInfo(p); if (h) line.push(heavyText(h));
-      x.fillStyle = '#fff'; x.font = '600 44px ' + FONT; x.fillText(line.join('  \u00b7  '), 70, y + 440);
-      x.fillStyle = '#5c5753'; x.font = '500 34px ' + FONT;
-      x.fillText((lv ? fmtDate(weighed && p.weighoff && p.weighoff.date ? p.weighoff.date : lv.date, true) : '') , 70, H - 50);
-      if (logo) x.drawImage(logo, W - 140, H - 140, 90, 90);
+      var hv = heavyInfo(p); if (hv) line.push(heavyText(hv));
+      x.fillStyle = '#ffffff';
+      x.fillText(fit(line.join('  \u00b7  '), { weight: 600, size: 46, min: 32 }, maxW - 120), L, 1245);
+      x.fillStyle = '#8a847f'; x.font = '500 36px ' + FONT;
+      var when = weighed && p.weighoff && p.weighoff.date ? p.weighoff.date : lv ? lv.date : '';
+      if (when) x.fillText(fmtDate(when, true), L, 1305);
+      if (logo) x.drawImage(logo, W - 150, H - 150, 100, 100);
       c.toBlob(function (blob) {
         var file = new File([blob], (p.name.replace(/[^\w\- ]+/g, '') || 'fruit') + '.jpg', { type: 'image/jpeg' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
